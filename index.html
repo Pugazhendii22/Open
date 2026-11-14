@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="format-detection" content="telephone=no" />
+  <meta name="theme-color" content="#d5e7d7" />
+  <meta name="description" content="Fernwood is a tiny, playable open-world adventure built with Polyfork 3D models. Wander, discover places and collect the lost wayfinder charms." />
+  <title>Fernwood — a little world to wander</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script type="importmap">
+    {"imports":{"three":"./vendor/three.module.js","three/addons/":"./vendor/examples/jsm/"}}
+  </script>
+  <script type="module" src="app.js"></script>
+</head>
+<body>
+  <svg class="svg-defs" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <symbol id="i-leaf" viewBox="0 0 24 24"><path d="M20.5 3.5c-9.8-.4-15.9 3.7-16.1 10.5-.1 3.4 2.1 5.7 5.2 5.5 6.4-.2 10.7-7.1 10.9-16Z"/><path d="M4.1 21c2.5-5.2 6.5-8.6 12.4-11.6"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 1.8v2.1M12 20.1v2.1M22.2 12h-2.1M3.9 12H1.8M19.2 4.8l-1.5 1.5M6.3 17.7l-1.5 1.5M19.2 19.2l-1.5-1.5M6.3 6.3 4.8 4.8"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20.3 15.9A8.8 8.8 0 0 1 8.1 3.7 8.8 8.8 0 1 0 20.3 15.9Z"/></symbol>
+    <symbol id="i-map" viewBox="0 0 24 24"><path d="m3 5.5 5.8-2.2 6.4 2.2L21 3.3v15.2l-5.8 2.2-6.4-2.2L3 20.7Z"/><path d="M8.8 3.3v15.2m6.4-13v15.2"/></symbol>
+    <symbol id="i-book" viewBox="0 0 24 24"><path d="M12 5.4C8.7 3.5 5.6 3.2 2.5 4.3v14.1c3.1-1.1 6.2-.8 9.5 1.1 3.3-1.9 6.4-2.2 9.5-1.1V4.3c-3.1-1.1-6.2-.8-9.5 1.1Z"/><path d="M12 5.4v14.1"/></symbol>
+    <symbol id="i-sound" viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4V9Z"/><path d="M16.5 8a6 6 0 0 1 0 8m2.7-10.7a9.5 9.5 0 0 1 0 13.4"/></symbol>
+    <symbol id="i-sound-off" viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4V9Z"/><path d="m17 9 5 6m0-6-5 6"/></symbol>
+    <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.4 9a2.7 2.7 0 0 1 5.2.9c0 1.8-2.6 2.2-2.6 4.3M12 17.4h.01"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="M5 5 19 19M19 5 5 19"/></symbol>
+    <symbol id="i-pin" viewBox="0 0 24 24"><path d="M19 10c0 5.2-7 11.5-7 11.5S5 15.2 5 10a7 7 0 0 1 14 0Z"/><circle cx="12" cy="10" r="2.5"/></symbol>
+    <symbol id="i-compass" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m15.6 8.4-2.3 4.9-4.9 2.3 2.3-4.9 4.9-2.3Z"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M4 12h15m-6-6 6 6-6 6"/></symbol>
+    <symbol id="i-spark" viewBox="0 0 24 24"><path d="m12 2 1.7 7.3L21 12l-7.3 2.7L12 22l-1.7-7.3L3 12l7.3-2.7L12 2Z"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m4.5 12 5 5 10-10"/></symbol>
+    <symbol id="i-camera" viewBox="0 0 24 24"><path d="M3 7h4l1.7-2h6.6L17 7h4v12H3Z"/><circle cx="12" cy="13" r="3.3"/></symbol>
+  </svg>
+
+  <div id="app">
+    <div id="scene" aria-label="Playable 3D world of Fernwood"></div>
+    <div class="scene-wash" aria-hidden="true"></div>
+
+    <div id="loading" class="loading-screen" aria-live="polite">
+      <div class="loading-orbit"><svg><use href="#i-leaf"/></svg></div>
+      <div class="loading-eyebrow">A LITTLE WORLD IS GROWING</div>
+      <div class="loading-title">Welcome to <em>Fernwood.</em></div>
+      <div class="loading-track"><span id="loading-progress"></span></div>
+      <div class="loading-caption" id="loading-caption">Planting the pine trees…</div>
+    </div>
+
+    <div id="hud" class="hud">
+      <header class="topbar">
+        <div class="brand" aria-label="Fernwood game">
+          <span class="brand-emblem"><svg><use href="#i-leaf"/></svg></span>
+          <span class="brand-copy"><strong>fernwood<span class="brand-dot">.</span></strong><small>A LITTLE WORLD TO WANDER</small></span>
+        </div>
+
+        <div class="world-controls">
+          <button id="time-button" class="world-control time-control" type="button" title="Change time of day">
+            <span class="control-orb"><svg id="time-icon"><use href="#i-sun"/></svg></span>
+            <span class="world-control-copy"><small>THE SKY RIGHT NOW</small><strong id="time-label">Sunlit morning</strong></span>
+            <span class="control-chevron">⌄</span>
+          </button>
+          <button id="season-button" class="season-control" type="button" title="Change season"><span class="season-dot"></span><span id="season-label">SUMMER</span><span class="control-chevron">⌄</span></button>
+        </div>
+
+        <nav class="header-actions" aria-label="Game tools">
+          <button id="sound-button" class="icon-button" type="button" title="Turn ambient sound on" aria-label="Turn ambient sound on"><svg><use href="#i-sound-off"/></svg></button>
+          <button id="mobile-photo" class="icon-button touch-only" type="button" title="Photo mode" aria-label="Photo mode"><svg><use href="#i-camera"/></svg></button>
+          <button id="help-button" class="icon-button" type="button" title="How to play" aria-label="How to play"><svg><use href="#i-help"/></svg></button>
+          <button id="map-button" class="nav-button" type="button" title="Open map (M)"><svg><use href="#i-map"/></svg><span>Map</span><kbd>M</kbd></button>
+          <button id="journal-button" class="nav-button nav-button-dark" type="button" title="Open journal (J)"><svg><use href="#i-book"/></svg><span>Journal</span></button>
+        </nav>
+      </header>
+
+      <aside class="quest-card" id="quest-card" aria-label="Current quest">
+        <button id="quest-toggle" class="quest-toggle" type="button" aria-expanded="true" aria-controls="quest-body">
+          <span class="quest-toggle-label"><span class="tiny-spark">✦</span> YOUR ADVENTURE</span>
+          <span class="quest-toggle-meta"><span id="quest-mini-count">0 / 5</span><svg class="quest-chevron"><use href="#i-arrow"/></svg></span>
+        </button>
+        <div class="quest-body" id="quest-body">
+          <div class="quest-topline"><span class="eyebrow"><span class="tiny-spark">✦</span> YOUR ADVENTURE</span><span class="quest-number">01 / 01</span></div>
+          <h1>Follow the<br><em>little lights.</em></h1>
+          <p>Five lost wayfinder charms are tucked around the forest. Take the long way. See what you find.</p>
+          <div class="quest-divider"></div>
+          <div class="quest-progress-header"><span>CHARMS FOUND</span><strong id="progress-count">0 <span>/ 5</span></strong></div>
+          <div class="charm-progress" id="charm-progress" aria-label="0 of 5 charms found">
+            <span class="charm-slot">✦</span><span class="charm-slot">✦</span><span class="charm-slot">✦</span><span class="charm-slot">✦</span><span class="charm-slot">✦</span>
+          </div>
+          <button id="quest-journal" class="quest-link" type="button"><span>Open field journal</span><svg><use href="#i-arrow"/></svg></button>
+        </div>
+      </aside>
+
+      <div class="map-widget" id="map-widget">
+        <div class="map-widget-head"><span><svg><use href="#i-compass"/></svg> FERNWOOD MAP</span><span class="map-live-dot"></span></div>
+        <button id="minimap-button" class="minimap-button" type="button" aria-label="Open the full map" title="Open the full map"><canvas id="minimap" width="360" height="360"></canvas><span class="minimap-n">N</span></button>
+        <button id="map-widget-foot" class="map-widget-foot" type="button"><span><span class="map-foot-pin">⌖</span> <span id="map-place">Pine Camp</span></span><span class="map-foot-open">OPEN MAP ↗</span></button>
+      </div>
+
+      <div class="controls-card" aria-label="Movement controls">
+        <span class="controls-eyebrow">A LITTLE HELP TO GET GOING</span>
+        <div class="controls-row"><span class="key-group"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span><span>Move</span><i></i><span class="mouse-icon" aria-hidden="true"></span><span>Look around</span></div>
+        <div class="controls-row controls-row-secondary"><span><kbd>SHIFT</kbd> Run</span><span><kbd>E</kbd> Interact</span><span><kbd>ESC</kbd> Close</span></div>
+      </div>
+
+      <div class="bottom-center">
+        <div id="interact-prompt" class="interact-prompt" hidden><kbd>E</kbd><span id="interact-text">Talk to Mira</span><svg><use href="#i-arrow"/></svg></div>
+        <div class="location-pill"><span class="location-icon"><svg><use href="#i-pin"/></svg></span><span class="location-copy"><small>YOU ARE HERE</small><strong id="current-place">Pine Camp</strong></span><span class="location-compass" id="compass-letter">N</span></div>
+      </div>
+
+      <div class="bottom-right">
+        <button id="photo-button" class="photo-button" type="button" title="Photo mode (P)"><svg><use href="#i-camera"/></svg><span>Photo mode</span><kbd>P</kbd></button>
+        <button id="credits-shortcut" class="polyfork-credit" type="button">WORLD MODELS BY <strong>POLYFORK</strong><span>↗</span></button>
+      </div>
+
+      <div class="world-mini" role="group" aria-label="World settings">
+        <button id="mini-time" type="button" aria-label="Change time of day" title="Change time of day"><svg id="mini-time-icon"><use href="#i-sun"/></svg></button>
+        <button id="mini-season" type="button" aria-label="Change season" title="Change season"><span class="season-swatch" id="mini-season-swatch"></span></button>
+      </div>
+
+      <div class="touch-layer" id="touch-layer" aria-hidden="true">
+        <div class="stick-rest" id="stick-rest"><span class="stick-rest-dot"></span></div>
+        <div class="stick-base" id="stick-base" hidden><span class="stick-knob" id="stick-knob"></span></div>
+      </div>
+      <button id="mobile-interact" class="mobile-interact" type="button" aria-label="Interact" hidden><svg><use href="#i-spark"/></svg><span>USE</span></button>
+      <div class="touch-hint" id="touch-hint" hidden>
+        <div><span class="th-icon th-look"><svg><use href="#i-compass"/></svg></span><span>Drag anywhere to look around</span></div>
+        <div><span class="th-icon th-walk"><svg><use href="#i-arrow"/></svg></span><span>Push the stick to walk, further to run</span></div>
+      </div>
+
+      <div id="discovery-toast" class="discovery-toast" aria-live="polite"><span class="discovery-icon"><svg><use href="#i-compass"/></svg></span><span><small>NEW PLACE DISCOVERED</small><strong id="discovery-name">Pine Camp</strong></span><span class="toast-flourish">✧</span></div>
+      <div id="small-toast" class="small-toast" aria-live="polite"></div>
+      <div id="world-tag" class="world-tag"><span class="tag-dot"></span><span id="world-tag-text">WAYFINDER CHARM</span></div>
+      <div id="photo-hint" class="photo-hint" role="button" tabindex="0">PHOTO MODE <span>·</span> <span class="hint-keys">PRESS <kbd>P</kbd> TO RETURN</span><span class="hint-tap">TAP TO RETURN</span></div>
+    </div>
+
+    <div id="dialogue" class="dialogue" hidden>
+      <div class="dialogue-portrait"><svg><use href="#i-leaf"/></svg></div>
+      <div class="dialogue-body"><div class="dialogue-name" id="dialogue-name">MIRA · PARK RANGER</div><p id="dialogue-text"></p></div>
+      <button id="dialogue-close" class="dialogue-next" type="button">CONTINUE <svg><use href="#i-arrow"/></svg></button>
+    </div>
+
+    <div id="overlay" class="overlay" hidden>
+      <div class="overlay-scrim" id="overlay-scrim"></div>
+      <section class="guide-panel" role="dialog" aria-modal="true" aria-labelledby="guide-title">
+        <div class="guide-top"><div class="guide-brand"><span class="guide-brand-icon"><svg><use href="#i-leaf"/></svg></span><span>THE FERNWOOD FIELD GUIDE</span></div><button id="overlay-close" class="overlay-close" type="button" aria-label="Close guide"><svg><use href="#i-close"/></svg></button></div>
+        <div class="guide-tabs" role="tablist" aria-label="Field guide sections">
+          <button class="guide-tab active" type="button" data-tab="map"><svg><use href="#i-map"/></svg> The map</button>
+          <button class="guide-tab" type="button" data-tab="journal"><svg><use href="#i-book"/></svg> My journal</button>
+          <button class="guide-tab" type="button" data-tab="help"><svg><use href="#i-help"/></svg> How to play</button>
+          <button class="guide-tab" type="button" data-tab="credits"><svg><use href="#i-spark"/></svg> Credits</button>
+        </div>
+        <div class="guide-content" id="guide-content"></div>
+        <div class="guide-bottom"><span>FERNWOOD · AN OPEN-WORLD LITTLE ADVENTURE</span><span>PRESS ESC TO CLOSE</span></div>
+      </section>
+    </div>
+  </div>
+</body>
+</html>
