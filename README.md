@@ -1,15 +1,34 @@
-# Fernwood — a little open world to wander
+# Fernwood — The Lost Expedition
 
-A small, playable open-world game that runs in the browser. Wander a low-poly forest, meet the locals, and find five lost wayfinder charms. Built with [Three.js](https://threejs.org) and real [Polyfork](https://polyfork.dev) GLB models.
+A small, playable open-world adventure that runs in the browser. Three shards of a broken map are hidden across a low-poly forest: one on a fog island in the middle of a lake, one at the top of a quarry climb, one at the bottom of a flooded mine. Bring all three to the altar in the sunken ruin, take the relic, and get out before the roof comes down.
 
-Playable with a keyboard and mouse on desktop, or with thumbs on a phone — a thumbstick, a big action button, tap-to-look and pinch-to-zoom all come built in.
+Built with [Three.js](https://threejs.org) and real [Polyfork](https://polyfork.dev) GLB models. No build step, no dependencies to install — it is static HTML, CSS and ES modules.
+
+**Desktop:** keyboard + mouse. **Phone:** thumbstick, big action button, jump and dodge buttons, tap-to-look, pinch-to-zoom.
 
 ![Fernwood on a phone](screenshots/mobile-portrait.png)
 
+## The expedition
+
+| Step | Where | What you do |
+| --- | --- | --- |
+| 1 | Bluewater Dock | Take the paddle, board the canoe, row across the fog lake |
+| 2 | The Fog Islet | Beach the canoe and take the **Fog Shard** |
+| 3 | The Lookout | Walk up the quarry columns, take the **Sky Shard** |
+| 4 | The Old Mine | Light the lantern, shove the stone onto the weight plate, take the **Deep Shard** — the mine starts flooding, 78 seconds |
+| 5 | The Sunken Ruin | The altar needs all three shards. It opens, the ruin starts to collapse (46 seconds), and the escape ring is through the south doorway |
+
+Progress (paddle, lantern, relic and the three shards) is saved to `localStorage`, and a **Save tweaks** style reset is one button away in the journal.
+
+### Combat
+
+Five hearts, a stamina bar, and a slingshot. Hounds patrol the islet, the quarry and the mine. They circle, wind up for an audible half-second, then lunge — roll through the lunge with `C` / **DODGE**, or put a sling stone in them first (two hits). Running drains stamina; it refills when you stop. Hit a hound and it flashes white and backs off. Three hits and you go down, then wake up at camp with your shards intact.
+
 ## What's in the world
 
-- Six discoverable places: Pine Camp, Bluewater Dock, Old Pine Cabin, The Swing Tree, Whispering Pines, The Lookout
-- Five collectible wayfinder charms, saved to `localStorage`
+- Nine discoverable places, three of them gated: the fog lake, the quarry climb, the flooded mine
+- A weight-plate puzzle in the mine (shove the stone, the gate opens)
+- Two timed sequences: the mine flood and the ruin collapse
 - 3 sky settings (morning / golden hour / after dusk) and 3 seasons (summer / autumn / winter) that repaint the ground, grass, snow and leaves
 - A field guide with a live map, journal, how-to-play and full model credits
 - Photo mode, ambient forest audio, and a minimap that tracks where you are
@@ -20,10 +39,12 @@ Playable with a keyboard and mouse on desktop, or with thumbs on a phone — a t
 
 | Action | Input |
 | --- | --- |
-| Walk | `W` `A` `S` `D` or arrow keys |
-| Run | `Shift` while moving |
+| Walk / run | `W` `A` `S` `D` (or arrows), `Shift` to run |
+| Jump | `Space` |
+| Roll / dodge | `C` |
+| Fire the slingshot | `F` |
+| Use, talk, take, board | `E` |
 | Look / zoom | Drag mouse / scroll wheel |
-| Talk, read, collect | `E` or `Space` |
 | Map / journal / photo | `M` / `J` / `P` |
 | Close a window | `Esc` |
 
@@ -31,58 +52,41 @@ Playable with a keyboard and mouse on desktop, or with thumbs on a phone — a t
 
 | Action | Input |
 | --- | --- |
-| Walk | Push the stick in the lower-left (appears where you touch) |
-| Run | Push the stick all the way out |
-| Look / zoom | Drag anywhere on the world / pinch |
-| Talk, read, collect | Tap the round **USE** button |
+| Walk / run | Push the stick bottom-left, further to run |
+| Jump / roll | The **JUMP** and **DODGE** buttons, bottom-right |
+| Use / fire | The big button — it reads `USE` when something is close, `FIRE` when nothing is |
+| Look / zoom | Drag the world, pinch with two fingers |
 
-The layout adapts to portrait, landscape, small phones (down to 320 px) and tablets, respects notch safe areas, and steps its render resolution down automatically if a device starts dropping frames.
+The stick spawns wherever your thumb lands, so you never have to find a fixed circle.
 
-## Run it locally
+## Running it locally
 
-It's a static site with no build step. Any static server works:
+The game loads ES modules and `.glb` models, so it needs a server (not `file://`):
 
 ```bash
 python3 -m http.server 8000
-# then open http://localhost:8000
+# then open http://127.0.0.1:8000
 ```
 
-Opening `index.html` straight from the filesystem will not work — ES module imports and the GLB loader need `http://`.
+## Deploying
 
-## Deploy to Vercel
-
-Zero configuration required:
-
-1. Import the GitHub repo at [vercel.com/new](https://vercel.com/new).
-2. Framework preset: **Other**. Build command: *(none)*. Output directory: *(root, leave default)*.
-3. Deploy.
-
-Or from the CLI:
-
-```bash
-npm i -g vercel
-vercel --prod
-```
-
-`vercel.json` adds long-lived caching for the model, font and vendor files so repeat visits load instantly.
+The repo is static. On Vercel: **Add New → Project → import this repo → framework preset "Other"**, no build command, output directory `.` — `vercel.json` takes care of caching and headers.
 
 ## Project layout
 
 ```
-index.html      markup, HUD, inline SVG icon sprites
-styles.css      design system + desktop and touch layouts
-app.js          Three.js scene, world generation, game loop, input
-assets/models   26 Polyfork GLB models
-assets/fonts    self-hosted DM Sans + Fraunces
-vendor          Three.js r158 (MIT) + GLTFLoader, vendored for offline use
-campground-kit.md  reference notes for the Polyfork Campground kit
-tests           Playwright scripts used to verify the mobile build
+index.html          markup, HUD, SVG icons
+styles.css          all styling, including the mobile HUD
+app.js              the whole game: world build, movement, camera, adventure layer
+assets/models/      26 GLB props from Polyfork
+assets/fonts/       display + interface fonts
+vendor/             three.module.js and GLTFLoader
+tests/              Playwright scripts and screenshots used to verify the build
+screenshots/        what you see above
 ```
 
-## Credits & licensing
+## Credits
 
-- **3D models:** [Polyfork](https://polyfork.dev) by Lucas Martinic — the free low-poly library, used under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). The 26 bundled `.glb` files are unmodified. Each one is linked to its model page inside the game's **Credits** tab.
-- **Three.js:** MIT licensed.
-- Everything else — the terrain, trails, charm effects, lighting, seasons, interactions and interface — was written for this project.
+All models are from the [Polyfork](https://polyfork.dev) campground collection and are used unmodified. The land, trails, mine, ruin, climb, creatures, lighting, seasons, combat and interface were made for this game.
 
-Fernwood is an independent demo and is not endorsed by Polyfork.
+Open the in-game **Journal → Credits** for the full model list.

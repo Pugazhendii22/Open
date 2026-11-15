@@ -38,15 +38,19 @@ const PLACES = [
   {id:'cabin', name:'Old Pine Cabin', x:28, z:19, radius:8, note:'The oldest little home in Fernwood.', short:'Beyond the meadow'},
   {id:'swing', name:'The Swing Tree', x:-30, z:1, radius:9, note:'Some things are worth a detour.', short:'West of the lake'},
   {id:'grove', name:'Whispering Pines', x:13, z:-21, radius:9, note:'The forest sounds different here.', short:'Deep in the woods'},
-  {id:'lookout', name:'The Lookout', x:30, z:-28, radius:9, note:'The whole world looks small from up here.', short:'High above the trail'}
+  {id:'lookout', name:'The Lookout', x:30, z:-28, radius:9, note:'The whole world looks small from up here.', short:'High above the trail'},
+  {id:'islet', name:'The Fog Islet', x:-16, z:-12, radius:6, note:'Lost in the middle of the lake.', short:'A paddle away'},
+  {id:'mine', name:'The Old Mine', x:-38, z:-30, radius:9, note:'Someone dug here, and something moved in.', short:'South-west, in the rock'},
+  {id:'ruin', name:'The Sunken Ruin', x:24, z:36, radius:9, note:'Three stones, one altar, one empty space.', short:'Behind the old cabin'}
 ];
 
+// Three shards of the expedition's map, each behind its own gate:
+// the fog islet (canoe), the lookout climb (jumping), the flooded mine (lantern).
+const ISLET_X=-16, ISLET_Z=-12;
 const CHARMS = [
-  {name:'The First Light', x:0, z:4, place:'Pine Camp'},
-  {name:'The Water Glimmer', x:-1, z:-8, place:'Bluewater Dock'},
-  {name:'The Hearth Star', x:25, z:17, place:'Old Pine Cabin'},
-  {name:'The Pine Whisper', x:13, z:-23, place:'Whispering Pines'},
-  {name:'The Faraway Spark', x:-30, z:2, place:'The Swing Tree'}
+  {name:'The Fog Shard',  x:ISLET_X, z:ISLET_Z, place:'The Fog Islet'},
+  {name:'The Sky Shard',  x:29.4, z:-30.4, y:7.7, place:'The Lookout'},
+  {name:'The Deep Shard', x:-43.6, z:-36.4, place:'The Old Mine'}
 ];
 
 const PATHS = [
@@ -80,6 +84,11 @@ const dom = {
   touchLayer:$('#touch-layer'), stickBase:$('#stick-base'), stickKnob:$('#stick-knob'), stickRest:$('#stick-rest'), touchHint:$('#touch-hint'),
   mobilePhoto:$('#mobile-photo'), photoHint:$('#photo-hint'),
   miniTime:$('#mini-time'), miniTimeIcon:$('#mini-time-icon use'), miniSeason:$('#mini-season'), miniSeasonSwatch:$('#mini-season-swatch'),
+  hearts:$('#hearts'), staminaFill:$('#stamina-fill'), vitals:$('#vitals'),
+  actJump:$('#act-jump'), actDodge:$('#act-dodge'), actionLabel:$('#action-label'),
+  missionTimer:$('#mission-timer'), missionTitle:$('#mission-title'), missionLabel:$('#mission-label'), missionTime:$('#mission-time'), missionFill:$('#mission-fill'),
+  damageFlash:$('#damage-flash'), darkVeil:$('#dark-veil'), deathOverlay:$('#death-overlay'),
+  victoryOverlay:$('#victory-overlay'), victoryClose:$('#victory-close'),
   discoveryToast:$('#discovery-toast'), discoveryName:$('#discovery-name'), smallToast:$('#small-toast'), worldTag:$('#world-tag'), worldTagText:$('#world-tag-text'),
   dialogue:$('#dialogue'), dialogueName:$('#dialogue-name'), dialogueText:$('#dialogue-text'), dialogueClose:$('#dialogue-close'),
   overlay:$('#overlay'), overlayScrim:$('#overlay-scrim'), overlayClose:$('#overlay-close'), guideContent:$('#guide-content'), guideTabs:[...document.querySelectorAll('.guide-tab')]
@@ -90,7 +99,7 @@ const state = {
   x:4, z:14, facing:Math.PI, keys:new Set(), touch:new Set(), stick:{x:0,y:0,active:false,run:false},
   yaw:0.39, pitch:0.59, distance:17, dragging:false, dragX:0, dragY:0,
   timeIndex:0, seasonIndex:0, soundOn:false, paused:false, photo:false, currentTab:'map',
-  found:new Set(Array.isArray(saved.found) ? saved.found.filter(i=>Number.isInteger(i) && i>=0 && i<5) : []),
+  found:new Set(Array.isArray(saved.found) ? saved.found.filter(i=>Number.isInteger(i) && i>=0 && i<3) : []),
   discovered:new Set(['camp', ...(Array.isArray(saved.discovered) ? saved.discovered : [])]),
   waypoint:null, near:null, currentPlace:'Pine Camp', elapsed:0, mixerTime:0, lastMapDraw:0,
   currentAnimation:'Idle', dialogueOpen:false
@@ -121,8 +130,10 @@ function resetTouchInput(){
 function smoothstep(a,b,x){const t=clamp((x-a)/(b-a),0,1);return t*t*(3-2*t)}
 function dist2(a,b,x,z){return Math.hypot(a-x,b-z)}
 function lakeRadius(x,z){const dx=(x-LAKE.x)/LAKE.rx, dz=(z-LAKE.z)/LAKE.rz, ang=Math.atan2(dz,dx);return Math.hypot(dx,dz)/(1+.045*Math.sin(5*ang+.6)+.027*Math.cos(8*ang))}
-function heightAt(x,z){let h=.14*Math.sin(x*.115+z*.045)+.105*Math.sin(z*.23-x*.08)+.055*Math.sin(x*.42)*Math.cos(z*.27);const r=lakeRadius(x,z);h-=.76*(1-smoothstep(.77,1.14,r));return h}
-function saveGame(){try{localStorage.setItem('fernwood-save-v1',JSON.stringify({found:[...state.found],discovered:[...state.discovered]}))}catch{}}
+function isletDistTo(x,z){return Math.hypot(x-ISLET_X,z-ISLET_Z)}
+function isletBump(x,z){return .98*(1-smoothstep(2.5,4.35,isletDistTo(x,z)))}
+function heightAt(x,z){let h=.14*Math.sin(x*.115+z*.045)+.105*Math.sin(z*.23-x*.08)+.055*Math.sin(x*.42)*Math.cos(z*.27);const r=lakeRadius(x,z);h-=.76*(1-smoothstep(.77,1.14,r));h+=isletBump(x,z);return h}
+function saveGame(){try{localStorage.setItem('fernwood-save-v1',JSON.stringify({found:[...state.found],discovered:[...state.discovered],paddle:state.paddle===true,lantern:state.lantern===true,relic:state.relic===true}))}catch{}}
 
 function setupScene(){
   scene=new THREE.Scene();scene.background=new THREE.Color(TIMES[0].sky);scene.fog=new THREE.FogExp2(TIMES[0].fog,.011);
@@ -156,6 +167,7 @@ function makeGround(){
     const n=.5+.25*Math.sin(x*.18+z*.13)+.15*Math.sin(z*.41-x*.23)+.10*Math.cos(x*.68+z*.29);
     groundNoise.push(n);
     const c=new THREE.Color();c.setHSL(.278+(.5-n)*.02,.31,.54+(n-.5)*.055);
+    if(isletDistTo(x,z)<4.5)c.lerp(new THREE.Color(0xd8c79c),.72*(1-smoothstep(3.1,4.5,isletDistTo(x,z))));
     colors[i*3]=c.r;colors[i*3+1]=c.g;colors[i*3+2]=c.b;
   }
   geo.setAttribute('color',new THREE.BufferAttribute(colors,3));geo.computeVertexNormals();groundGeometry=geo;
@@ -315,7 +327,8 @@ function makeSky(){
 }
 
 function makeCharm(index,def){
-  const group=new THREE.Group();group.position.set(def.x,heightAt(def.x,def.z)+1.34,def.z);
+  const group=new THREE.Group();
+  group.position.set(def.x,(def.y!==undefined?def.y:heightAt(def.x,def.z)+1.34),def.z);
   const core=new THREE.Mesh(new THREE.OctahedronGeometry(.35,0),new THREE.MeshStandardMaterial({color:0xffdfa1,emissive:0xf4b54f,emissiveIntensity:1.65,metalness:.12,roughness:.25,flatShading:true}));
   core.scale.set(.8,1.45,.8);core.rotation.z=Math.PI/4;group.add(core);
   const ring=new THREE.Mesh(new THREE.TorusGeometry(.56,.022,4,32),new THREE.MeshBasicMaterial({color:0xffe4a4,transparent:true,opacity:.83}));ring.rotation.x=Math.PI/2;group.add(ring);
@@ -392,6 +405,10 @@ function addWorldModels(){
 }
 function placeTree(x,z,s){
   if(!modelTemplates.pine)return;
+  if(x>-45&&x<-24&&z>-40&&z<-16)return;             // mine grounds
+  if(Math.hypot(x-24,z-36)<12)return;                // sunken ruin
+  if(Math.hypot(x-31,z+28)<11)return;                // lookout climb
+  if(Math.hypot(x-ISLET_X,z-ISLET_Z)<7)return;       // fog islet
   pinePlacements.push({x,z,s,rotation:rand()*Math.PI*2});
   if(dist2(x,z,4,10)<22)colliders.push({x,z,r:.55*s});
 }
@@ -428,6 +445,7 @@ function loadModels(){
     finally{loaded++;dom.loadingProgress.style.width=`${12+Math.round(loaded/entries.length*88)}%`;if(loaded>entries.length*.43)dom.loadingCaption.textContent='Waking up the forest…';if(loaded>entries.length*.82)dom.loadingCaption.textContent='Nearly ready to wander…'}
   })).then(()=>{
     addWorldModels();
+    buildCanoe();
     renderer.shadowMap.needsUpdate=true; // bake static world shadows once
     dom.loadingProgress.style.width='100%';
     dom.loadingCaption.textContent='The trail is yours.';
@@ -444,6 +462,7 @@ function animate(now){
   tuneQuality(raw);
   const t=clock.getElapsedTime();state.elapsed=t;
   updatePlayer(dt);
+  updateAdventure(dt);
   if(playerMixer)playerMixer.update(dt);
   if(campfireMixer)campfireMixer.update(dt);
   for(const mix of npcMixers)mix.update(dt);
@@ -484,43 +503,28 @@ function setAnimation(name){if(!playerActions[name]||state.currentAnimation===na
   playerActions[state.currentAnimation]?.fadeOut(.2);
   const next=playerActions[name];next.reset().fadeIn(.2).play();state.currentAnimation=name;
 }
-function isWalkable(x,z){
+function isWalkable(x,z,feetY){
+  if(feetY===undefined)feetY=state.y;
+  if(state.mode==='canoe'){
+    if(Math.hypot(x,z)>62)return false;
+    if(isletDistTo(x,z)<ISLET.walk*.72)return false;
+    return lakeRadius(x,z)<1.0;
+  }
   if(Math.hypot(x,z)>66)return false;
-  if(lakeRadius(x,z)<1.05){const dockWalk=x>-4.4&&x<.8&&z>-13.2&&z<-10.0;if(!dockWalk)return false}
+  const onDock=x>-4.4&&x<.8&&z>-13.2&&z<-10.0;
+  const onIslet=isletDistTo(x,z)<ISLET.walk;
+  if(lakeRadius(x,z)<1.05&&!onDock&&!onIslet)return false;
+  if(hitsWall(x,z,.42))return false;
+  if(platformBlocked(x,z,feetY))return false;
   for(const c of colliders)if(dist2(x,z,c.x,c.z)<c.r+.28)return false;
   return true;
 }
-function updatePlayer(dt){
-  let forward=0,strafe=0,analog=0;
-  if(state.keys.has('KeyW')||state.keys.has('ArrowUp')||state.touch.has('forward'))forward++;
-  if(state.keys.has('KeyS')||state.keys.has('ArrowDown')||state.touch.has('back'))forward--;
-  if(state.keys.has('KeyD')||state.keys.has('ArrowRight')||state.touch.has('right'))strafe++;
-  if(state.keys.has('KeyA')||state.keys.has('ArrowLeft')||state.touch.has('left'))strafe--;
-  if(state.stick.active){
-    // Stick is analog: a gentle push creeps, a full push runs.
-    const mag=Math.hypot(state.stick.x,state.stick.y);
-    if(mag>.14){forward+=-state.stick.y;strafe+=state.stick.x;analog=Math.min(1,mag)}
-  }
-  const moving=(forward!==0||strafe!==0)&&!state.paused&&!state.dialogueOpen;
-  if(moving){
-    const length=Math.hypot(forward,strafe);forward/=length;strafe/=length;
-    const dx=(-Math.sin(state.yaw)*forward+Math.cos(state.yaw)*strafe),dz=(-Math.cos(state.yaw)*forward-Math.sin(state.yaw)*strafe);
-    const running=(state.keys.has('ShiftLeft')||state.keys.has('ShiftRight'))||(analog>.84);
-    const speed=(running?9.1:5.25)*(analog?clamp(analog,.45,1):1);
-    if(isWalkable(state.x+dx*speed*dt,state.z))state.x+=dx*speed*dt;
-    if(isWalkable(state.x,state.z+dz*speed*dt))state.z+=dz*speed*dt;
-    const targetAngle=Math.atan2(dx,dz);state.facing+=Math.atan2(Math.sin(targetAngle-state.facing),Math.cos(targetAngle-state.facing))*Math.min(1,dt*12);
-    setAnimation(running?'Run':'Walk');
-  }else setAnimation('Idle');
-  if(playerRoot){playerRoot.position.set(state.x,heightAt(state.x,state.z),state.z);playerRoot.rotation.y=state.facing}
-  // Locations and interactions stay live while the player walks.
-  if(!state.paused){updatePlace();updateNearby()}
-}
 function updateCamera(dt){
   const horizontal=state.distance*Math.cos(state.pitch),vertical=state.distance*Math.sin(state.pitch);
-  const desired=new THREE.Vector3(state.x+Math.sin(state.yaw)*horizontal,heightAt(state.x,state.z)+vertical+1.5,state.z+Math.cos(state.yaw)*horizontal);
+  const eyeY=state.mode==='canoe'?heightAt(state.x,state.z):state.y;
+  const desired=new THREE.Vector3(state.x+Math.sin(state.yaw)*horizontal,eyeY+vertical+1.5,state.z+Math.cos(state.yaw)*horizontal);
   camera.position.lerp(desired,Math.min(1,dt*6.5));
-  camera.lookAt(state.x-Math.sin(state.yaw)*4.8,heightAt(state.x,state.z)+1.4,state.z-Math.cos(state.yaw)*4.8);
+  camera.lookAt(state.x-Math.sin(state.yaw)*4.8,eyeY+1.4,state.z-Math.cos(state.yaw)*4.8);
 }
 function updatePlace(){
   let closest=null,lowest=Infinity;
@@ -538,12 +542,13 @@ function updatePlace(){
   const angle=((state.facing+Math.PI)/(Math.PI*2)*8+8)%8;
   dom.compassLetter.textContent=directions[Math.round(angle)%8];
 }
-function updateNearby(){
+function updateNearby(force){
   let near=null,best=Infinity;
   for(let i=0;i<CHARMS.length;i++){
     if(state.found.has(i))continue;
-    const charm=CHARMS[i],d=dist2(state.x,state.z,charm.x,charm.z);
-    if(d<2.4&&d<best){near={kind:'charm',index:i,label:`Collect ${charm.name}`};best=d}
+    const charm=CHARMS[i],d=dist2(state.x,state.z,charm.x,charm.z),obj=charmObjects[i];
+    const dy=obj?Math.abs((state.y+1.1)-obj.position.y):0;
+    if(d<2.5&&dy<2.6&&d<best){near={kind:'charm',index:i,label:`Take ${charm.name}`};best=d}
   }
   const actions=[
     {x:8.4,z:9.2,r:3.1,label:'Talk to Mira',kind:'mira'},
@@ -555,46 +560,84 @@ function updateNearby(){
     {x:-30,z:0,r:3.0,label:'Sit by the swing tree',kind:'swing'},
     {x:15,z:1,r:4.4,label:'Visit the ranger station',kind:'station'}
   ];
+  // --- expedition interactables ---
+  const paddle=pickups.find(p=>p.type==='paddle'),lanternPick=pickups.find(p=>p.type==='lantern');
+  if(paddle&&!paddle.taken)actions.push({x:paddle.x,z:paddle.z,r:2.4,label:'Pick up the paddle',kind:'paddle'});
+  if(lanternPick&&!lanternPick.taken)actions.push({x:lanternPick.x,z:lanternPick.z,r:2.4,label:'Take the lantern',kind:'lantern'});
+  if(state.mode==='walk'&&state.paddle&&!state.relic){
+    actions.push({x:CANOE_POS.x,z:CANOE_POS.z,r:3.0,label:'Climb into the canoe',kind:'canoe'});
+  }
+  if(state.mode==='canoe'&&lakeRadius(state.x,state.z)>.6){
+    actions.push({x:state.x,z:state.z,r:6,label:'Step ashore',kind:'ashore'});
+  }
+  if(!state.relic&&state.mode==='walk'){
+    actions.push({x:RUIN.x,z:RUIN.z,r:4.4,label:state.found.size>=3?'Take the Relic of the Vale':'The altar is sealed · 3 shards needed',kind:'altar'});
+  }
   for(const action of actions){const d=dist2(state.x,state.z,action.x,action.z);if(d<action.r&&d<best){near=action;best=d}}
-  if(near?.label!==state.near?.label){
+  if(force||near?.label!==state.near?.label){
     state.near=near;
-    dom.interactPrompt.hidden=!near;dom.mobileInteract.hidden=!near;
+    dom.interactPrompt.hidden=!near||state.dialogueOpen;
     if(near)dom.interactText.textContent=near.label;
+    syncActionButton();
   }
 }
 function interact(){
+  if(state.dead)return;
   if(!dom.overlay.hidden){closeGuide();return}
   if(state.dialogueOpen){closeDialogue();return}
   const near=state.near;if(!near)return;
+  if(near.kind==='paddle'||near.kind==='lantern'){
+    const pick=pickups.find(p=>p.type===near.kind&&!p.taken);
+    if(pick)collectPickup(pick);
+    updateNearby(true);return;
+  }
+  if(near.kind==='canoe'){boardCanoe();return}
+  if(near.kind==='ashore'){disembark();return}
+  if(near.kind==='altar'){
+    if(state.found.size<3){showSmallToast(`The altar wants all three shards · ${state.found.size} / 3`);return}
+    if(state.relic||state.collapseActive)return;
+    startCollapse();return;
+  }
   if(near.kind==='charm'){
     state.found.add(near.index);charmObjects[near.index].visible=false;saveGame();refreshProgress();
-    showSmallToast(`✦  ${CHARMS[near.index].name} found!  ${state.found.size} / 5`);
-    updateNearby();
-    if(state.found.size===5)setTimeout(()=>openDialogue('THE FOREST REMEMBERS','You found every little light. Fernwood feels a little brighter with you in it. The trails are still yours to wander.'),1050);
+    showSmallToast(`◈  ${CHARMS[near.index].name} taken  ·  ${state.found.size} / 3`);
+    if(near.index===2&&!state.floodActive&&inMine(state.x,state.z))startFlood();
+    updateNearby(true);
+    if(state.found.size===3)setTimeout(()=>openDialogue('THREE SHARDS','The pieces fit. The altar at the sunken ruin, behind the old cabin, is waiting. Go carefully — that place has been sealed a long time.'),900);
     if(!dom.overlay.hidden&&state.currentTab==='journal')renderTab('journal');
     return;
   }
   const lines={
-    mira:['MIRA · PARK RANGER','Welcome to Fernwood! Five wayfinder charms are hiding around the trails. No hurry, though. The best things happen when you get a little lost.'],
-    sign:['TRAILHEAD NOTICE','Bluewater Dock lies west, the old cabin east, and the lookout past the whispering pines. Stay on the path… or don’t.'],
-    pip:['PIP · LITTLE EXPLORER','I saw a tiny light by the lake! It looked like a falling star, only it forgot to fall.'],
-    sol:['SOL · LAKE ANGLER','The lake keeps all sorts of secrets. If you spot a gold glimmer near the water, it probably isn’t a fish.'],
-    cabin:['OLD PINE CABIN','The porch boards creak gently in the breeze. Someone has left a warm lantern burning for wandering guests.'],
-    lookout:['THE LOOKOUT','From up here, every trail leads somewhere good. There is a little something waiting where the pines grow close.'],
-    swing:['THE SWING TREE','The swing sways, even when the air is still. For a moment, it feels like the forest is saying hello.'],
+    mira:['MIRA · PARK RANGER','You came about the expedition. Three shards of their map are still out there — one across the fog, one up the lookout, one down the old mine. Bring them to the ruin and the Relic of the Vale is yours. Take the slingshot. The brambles bite.'],
+    sign:['TRAILHEAD NOTICE','WEST: the dock and a canoe that wants a paddle. EAST: the old cabin, and the sunken ruin behind it. SOUTH-WEST: the mine. It is dark, and it floods.'],
+    pip:['PIP · LITTLE EXPLORER','There is an island in the middle of the lake. I saw a light on it! You will need the canoe. And the bramble-hounds do not like stones in the face.'],
+    sol:['SOL · LAKE ANGLER','Paddle on the dock. Take it, or the canoe is just a decoration. And keep a stone in your sling — the fog islet has teeth.'],
+    cabin:['OLD PINE CABIN','The porch boards creak. Someone has scratched a note into the door: “Whatever you take from the ruin, take it running.”'],
+    lookout:['THE LOOKOUT','The ladder is long gone. Climb the old quarry ledges instead — jump, and let the stones take your weight.'],
+    swing:['THE SWING TREE','The swing sways, even when the air is still. Something has chewed through the rope, and the tracks are not kind.'],
     station:['RANGER STATION','A hand-painted map on the wall reads: “Take only memories. Leave the little world a little kinder.”']
   };
   const [name,text]=lines[near.kind]||['FERNWOOD','There is more to find if you keep wandering.'];openDialogue(name,text);
 }
-function openDialogue(name,text){dom.dialogueName.textContent=name;dom.dialogueText.textContent=text;dom.dialogue.hidden=false;state.dialogueOpen=true;resetTouchInput();dom.interactPrompt.hidden=true;dom.mobileInteract.hidden=true}
-function closeDialogue(){dom.dialogue.hidden=true;state.dialogueOpen=false;state.near=null;updateNearby()}
-function refreshProgress(){dom.progressCount.innerHTML=`${state.found.size} <span>/ 5</span>`;dom.questMiniCount.textContent=`${state.found.size} / 5`;dom.charmSlots.forEach((slot,i)=>slot.classList.toggle('found',state.found.has(i)));$('#charm-progress').setAttribute('aria-label',`${state.found.size} of 5 charms found`)}
+function openDialogue(name,text){dom.dialogueName.textContent=name;dom.dialogueText.textContent=text;dom.dialogue.hidden=false;state.dialogueOpen=true;resetTouchInput();dom.interactPrompt.hidden=true;dom.app.classList.add('dialogue-open')}
+function closeDialogue(){dom.dialogue.hidden=true;state.dialogueOpen=false;dom.app.classList.remove('dialogue-open');state.near=null;updateNearby(true)}
+function refreshProgress(){dom.progressCount.innerHTML=`${state.found.size} <span>/ 3</span>`;dom.questMiniCount.textContent=`${state.found.size} / 3`;dom.charmSlots.forEach((slot,i)=>slot.classList.toggle('found',state.found.has(i)));$('#charm-progress').setAttribute('aria-label',`${state.found.size} of 3 map shards found`)}
 function setQuestCollapsed(collapsed,save=true){
   dom.questCard.classList.toggle('is-collapsed',collapsed);
   dom.questToggle.setAttribute('aria-expanded',collapsed?'false':'true');
   if(save)try{localStorage.setItem('fernwood-quest-fold',collapsed?'1':'0')}catch{}
 }
 function toggleQuestCard(){setQuestCollapsed(!dom.questCard.classList.contains('is-collapsed'))}
+// One thumb button does both jobs: use what you're standing next to, otherwise fire.
+function syncActionButton(){
+  const use=!!state.near;
+  dom.actionLabel.textContent=use?'USE':'FIRE';
+  const icon=dom.mobileInteract.querySelector('use');
+  if(icon)icon.setAttribute('href',use?'#i-spark':'#i-bolt');
+  dom.mobileInteract.setAttribute('aria-label',use?(state.near?.label||'Use'):'Fire the slingshot');
+  dom.mobileInteract.classList.toggle('is-fire',!use);
+}
+function primaryAction(){ if(state.near)interact(); else fireSlingshot(); }
 let touchHintTimer=0;
 function showTouchHint(){
   if(!touchUI()||!dom.touchHint)return;
@@ -610,7 +653,7 @@ function updateWorldTag(){
   let target=null,label='';let best=14;
   for(let i=0;i<CHARMS.length;i++){
     if(state.found.has(i))continue;const c=CHARMS[i],d=dist2(state.x,state.z,c.x,c.z);
-    if(d<best){target={x:c.x,y:heightAt(c.x,c.z)+2.18,z:c.z};best=d;label='WAYFINDER CHARM'}
+    if(d<best){target={x:c.x,y:heightAt(c.x,c.z)+2.18,z:c.z};best=d;label='MAP SHARD'}
   }
   if(!target&&state.waypoint){const p=state.waypoint,d=dist2(state.x,state.z,p.x,p.z);if(d<34){target={x:p.x,y:heightAt(p.x,p.z)+3.2,z:p.z};label=`TRAIL SET · ${p.name.toUpperCase()}`}}
   if(!target||state.paused||state.photo){dom.worldTag.classList.remove('show');return}
@@ -620,7 +663,7 @@ function updateWorldTag(){
   dom.worldTag.style.left=x+'px';dom.worldTag.style.top=y+'px';dom.worldTag.style.transform='translate(-50%,-50%)';dom.worldTagText.textContent=label;dom.worldTag.classList.add('show');
 }
 
-function applyTime(){
+function applyTime(notify=true){
   const p=TIMES[state.timeIndex];scene.background.set(p.sky);scene.fog.color.set(p.fog);sunLight.color.set(p.sun);sunLight.intensity=p.sunPower;hemiLight.intensity=p.hemi;renderer.toneMappingExposure=p.exposure;
   waterMaterial.color.set(p.water);cabinLight.intensity=state.timeIndex===2?2.8:.3;
   starField.visible=state.timeIndex===2;state.sunSprite.visible=state.timeIndex!==2;clouds.forEach(cloud=>cloud.visible=state.timeIndex!==2);
@@ -629,7 +672,7 @@ function applyTime(){
   dom.miniTimeIcon.parentElement.setAttribute('aria-label',`Time of day: ${p.label}. Tap to change.`);
   $('.control-orb').style.background=state.timeIndex===2?'#d8e6e7':state.timeIndex===1?'#f5ddba':'#f1dfb9';
   $('.control-orb').style.color=state.timeIndex===2?'#416474':'#9a6f2b';
-  showSmallToast(`The sky has changed · ${p.label}`);
+  if(notify)showSmallToast(`The sky has changed · ${p.label}`);
 }
 function applySeason(notify=true){
   const s=SEASONS[state.seasonIndex];const colors=groundGeometry.attributes.color;
@@ -721,7 +764,7 @@ function renderTab(tab){
   state.currentTab=tab;dom.guideTabs.forEach(btn=>btn.classList.toggle('active',btn.dataset.tab===tab));guideMapCanvas=null;
   const count=state.discovered.size;
   if(tab==='map'){
-    dom.guideContent.innerHTML=`<div class="guide-section"><div class="section-kicker">THE WORLD IS YOURS</div><h2 class="section-title" id="guide-title">Find your <em>own way.</em></h2><p class="section-subtitle">Six little places, a hundred ways to get there. Choose a place to set a trail marker.</p><div class="map-layout"><div class="big-map-wrap"><canvas id="big-map" aria-label="Map of Fernwood"></canvas><div class="map-compass">N ↑</div><div class="map-scale">✦ YOU ARE THE GOLD ARROW</div></div><div class="map-side"><div class="map-side-title">PLACES TO WANDER · ${count} / 6 DISCOVERED</div><div class="place-list">${PLACES.map((p,i)=>`<button class="place-row ${state.discovered.has(p.id)?'found':''} ${state.waypoint?.id===p.id?'selected':''}" data-place="${p.id}" type="button"><span class="place-index">${String(i+1).padStart(2,'0')}</span><span class="place-row-copy"><strong>${p.name}</strong><small>${state.discovered.has(p.id)?'Discovered':'Not discovered yet'} · ${Math.round(dist2(state.x,state.z,p.x,p.z))} steps away</small></span><span class="place-row-arrow">↗</span></button>`).join('')}</div><p class="map-tip"><strong>TIP</strong> · Click a place to mark it, then follow the path. You can also simply wander.</p></div></div></div>`;
+    dom.guideContent.innerHTML=`<div class="guide-section"><div class="section-kicker">THE WORLD IS YOURS</div><h2 class="section-title" id="guide-title">Find your <em>own way.</em></h2><p class="section-subtitle">Nine places, one relic, and more than one way to get hurt. Choose a place to set a trail marker.</p><div class="map-layout"><div class="big-map-wrap"><canvas id="big-map" aria-label="Map of Fernwood"></canvas><div class="map-compass">N ↑</div><div class="map-scale">✦ YOU ARE THE GOLD ARROW</div></div><div class="map-side"><div class="map-side-title">PLACES TO WANDER · ${state.discovered.size} / ${PLACES.length} DISCOVERED</div><div class="place-list">${PLACES.map((p,i)=>`<button class="place-row ${state.discovered.has(p.id)?'found':''} ${state.waypoint?.id===p.id?'selected':''}" data-place="${p.id}" type="button"><span class="place-index">${String(i+1).padStart(2,'0')}</span><span class="place-row-copy"><strong>${p.name}</strong><small>${state.discovered.has(p.id)?'Discovered':'Not discovered yet'} · ${Math.round(dist2(state.x,state.z,p.x,p.z))} steps away</small></span><span class="place-row-arrow">↗</span></button>`).join('')}</div><p class="map-tip"><strong>TIP</strong> · Click a place to mark it, then follow the path. You can also simply wander.</p></div></div></div>`;
     guideMapCanvas=$('#big-map');
     document.querySelectorAll('.place-row').forEach(btn=>btn.addEventListener('click',()=>setWaypoint(PLACES.find(p=>p.id===btn.dataset.place))));
     guideMapCanvas.addEventListener('click',e=>{
@@ -732,34 +775,33 @@ function renderTab(tab){
     });
     requestAnimationFrame(()=>drawMap(guideMapCanvas,false));
   } else if(tab==='journal'){
-    dom.guideContent.innerHTML=`<div class="guide-section"><div class="section-kicker">PAGES FROM THE TRAIL</div><h2 class="section-title" id="guide-title">Your <em>field journal.</em></h2><p class="section-subtitle">A collection of small discoveries. There is no wrong way to fill these pages.</p><div class="journal-overview"><div class="stat-tile"><strong>${state.found.size} <span style="font-size:16px;color:#9fb294">/ 5</span></strong><small>CHARMS FOUND</small></div><div class="stat-tile"><strong>${count} <span style="font-size:16px;color:#9fb294">/ 6</span></strong><small>PLACES DISCOVERED</small></div><div class="stat-tile"><strong>${Math.round(Math.hypot(state.x-4,state.z-14)+state.found.size*14+count*8)}</strong><small>A GOOD START</small></div></div><div class="journal-grid"><div><h3 class="journal-subhead">The wayfinder charms</h3><div class="charm-list">${CHARMS.map((c,i)=>`<div class="charm-item ${state.found.has(i)?'collected':''}"><span class="charm-item-icon">✦</span><span><strong>${state.found.has(i)?c.name:'A little light, still out there'}</strong><small>${state.found.has(i)?`Found at ${c.place}`:'Keep wandering to find this one'}</small></span></div>`).join('')}</div></div><div><h3 class="journal-subhead">Places you have seen</h3><div class="journal-discoveries"><p>Every part of the forest has a story. Which ones have you found?</p>${PLACES.map(p=>`<div class="journal-place ${state.discovered.has(p.id)?'':'undiscovered'}"><span>${state.discovered.has(p.id)?'✧':'○'}</span><span>${state.discovered.has(p.id)?p.name:'Somewhere undiscovered'}</span></div>`).join('')}</div></div></div></div>`;
+    dom.guideContent.innerHTML=`<div class="guide-section"><div class="section-kicker">PAGES FROM THE TRAIL</div><h2 class="section-title" id="guide-title">Your <em>field journal.</em></h2><p class="section-subtitle">A collection of small discoveries. There is no wrong way to fill these pages.</p><div class="journal-overview"><div class="stat-tile"><strong>${state.found.size} <span style="font-size:16px;color:#9fb294">/ 3</span></strong><small>MAP SHARDS</small></div><div class="stat-tile"><strong>${state.discovered.size} <span style="font-size:16px;color:#9fb294">/ ${PLACES.length}</span></strong><small>PLACES FOUND</small></div><div class="stat-tile"><strong>${state.hp} <span style="font-size:16px;color:#9fb294">/ ${EXP.hpMax}</span></strong><small>HEARTS LEFT</small></div></div><div class="journal-grid"><div><h3 class="journal-subhead">The broken map</h3><div class="charm-list">${CHARMS.map((c,i)=>`<div class="charm-item ${state.found.has(i)?'collected':''}"><span class="charm-item-icon">◈</span><span><strong>${state.found.has(i)?c.name:'A shard, still hiding'}</strong><small>${state.found.has(i)?`Taken from ${c.place}`:['Paddle out to the fog islet','Climb the lookout ledges','Light the lantern and go down the mine'][i]}</small></span></div>`).join('')}</div></div><div><h3 class="journal-subhead">Places you have seen</h3><div class="journal-discoveries"><p>Every part of the forest has a story. Which ones have you found?</p>${PLACES.map(p=>`<div class="journal-place ${state.discovered.has(p.id)?'':'undiscovered'}"><span>${state.discovered.has(p.id)?'✧':'○'}</span><span>${state.discovered.has(p.id)?p.name:'Somewhere undiscovered'}</span></div>`).join('')}</div></div></div></div>`;
   } else if(tab==='help'){
     const touch=touchUI();
     const rows=touch?[
-      ['Walk around','Push the stick, bottom-left'],
-      ['Run','Push the stick all the way out'],
-      ['Look around','Drag anywhere on the world'],
-      ['Zoom in / out','Pinch with two fingers'],
-      ['Talk, read, collect','Tap the <kbd>USE</kbd> button'],
+      ['Walk / run','Push the stick, further to run'],
+      ['Jump the ledges','Tap <kbd>JUMP</kbd>'],
+      ['Dodge a lunge','Tap <kbd>DODGE</kbd>'],
+      ['Look around / zoom','Drag the world, pinch to zoom'],
+      ['Use or fire','The big button — it becomes <kbd>FIRE</kbd> when nothing is close'],
       ['Map / journal','Tap <kbd>MAP</kbd> or <kbd>JOURNAL</kbd> up top'],
-      ['Change sky / season','Tap the sun and leaf buttons'],
-      ['Close any window','Tap the <kbd>✕</kbd>']
+      ['Change sky / season','Tap the sun and leaf buttons']
     ]:[
-      ['Walk around','<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or arrow keys'],
-      ['Run a little faster','<kbd>SHIFT</kbd> + move'],
+      ['Walk around','<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or arrows'],
+      ['Run / jump / roll','<kbd>SHIFT</kbd> <kbd>SPACE</kbd> <kbd>C</kbd>'],
+      ['Fire the slingshot','<kbd>F</kbd>'],
+      ['Use, talk, take','<kbd>E</kbd>'],
       ['Look around / zoom','Drag mouse / scroll'],
-      ['Talk, read, collect','<kbd>E</kbd> or <kbd>SPACE</kbd>'],
       ['Map / journal / photo','<kbd>M</kbd> <kbd>J</kbd> <kbd>P</kbd>'],
-      ['Change sky / season','Click the controls above'],
       ['Close any window','<kbd>ESC</kbd>']
     ];
     const helpLines=rows.map(([label,keys])=>`<div class="help-line"><span>${label}</span><span>${keys}</span></div>`).join('');
     const collectHint=touch?'tap the gold USE button':'press E';
-    dom.guideContent.innerHTML=`<div class="guide-section"><div class="section-kicker">WELCOME TO FERNWOOD</div><h2 class="section-title" id="guide-title">Go on, <em>get lost.</em></h2><p class="section-subtitle">It is a real little game. Walk wherever the trail takes you, meet the locals, and collect five glowing charms.</p><div class="help-grid"><div class="help-card"><h3>The little essentials</h3>${helpLines}</div><div class="help-note"><div><div class="note-star">✦</div><h3>Take the scenic route.</h3><p>The golden glimmers are wayfinder charms. They float close to the ground near the lake, the cabins and the deeper forest. When you are close enough, ${collectHint} to collect one.</p></div><button id="help-map" type="button">LOOK AT THE MAP ↗</button></div></div></div>`;
+    dom.guideContent.innerHTML=`<div class="guide-section"><div class="section-kicker">WELCOME TO FERNWOOD</div><h2 class="section-title" id="guide-title">Go on, <em>get lost.</em></h2><p class="section-subtitle">Three map shards, three gates, one relic. You have a slingshot, a dodge roll and five hearts. The bramble-hounds have none of those things.</p><div class="help-grid"><div class="help-card"><h3>The little essentials</h3>${helpLines}</div><div class="help-note"><div><div class="note-star">✦</div><h3>Take the scenic route.</h3><p>Shards hide behind the fog islet, the lookout climb and the flooded mine. Shoot hounds before they lunge, roll through the ones you cannot outrun, and never trust a room that has started to rumble.</p></div><button id="help-map" type="button">LOOK AT THE MAP ↗</button></div></div></div>`;
     $('#help-map').addEventListener('click',()=>renderTab('map'));
   } else {
     const creditLinks=Object.values(MODEL_DEFS).map(([id,name])=>`<a href="https://polyfork.dev/asset/${id}" target="_blank" rel="noopener noreferrer" title="${name} by Polyfork, CC BY 4.0">${name} ↗</a>`).join('');
-    dom.guideContent.innerHTML=`<div class="guide-section"><div class="section-kicker">THE PEOPLE BEHIND THE POLYGONS</div><h2 class="section-title" id="guide-title">Made with <em>Polyfork.</em></h2><p class="section-subtitle">A tiny playable world, made from a collection of wonderfully cohesive low-poly things.</p><div class="credits-intro"><strong>3D model credits.</strong> The 26 bundled mesh models listed below are by <a href="https://polyfork.dev/" target="_blank" rel="noopener noreferrer">Polyfork</a>, created by Lucas Martinic, and are used under <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Each link opens its model page. The GLB models are unmodified; the land, trails, charms, lighting, seasons, interactions and interface were made for this game.</div><div class="credit-grid">${creditLinks}</div><p class="credit-footer">Three.js is MIT-licensed. Fernwood is an independent little demo and is not endorsed by Polyfork. Individual asset attribution is also available in the included CREDITS.md file.</p></div>`;
+    dom.guideContent.innerHTML=`<div class="guide-section"><div class="section-kicker">THE PEOPLE BEHIND THE POLYGONS</div><h2 class="section-title" id="guide-title">Made with <em>Polyfork.</em></h2><p class="section-subtitle">A playable expedition, made from a collection of wonderfully cohesive low-poly things.</p><div class="credits-intro"><strong>3D model credits.</strong> The 26 bundled mesh models listed below are by <a href="https://polyfork.dev/" target="_blank" rel="noopener noreferrer">Polyfork</a>, created by Lucas Martinic, and are used under <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Each link opens its model page. The GLB models are unmodified; the land, trails, mine, ruin, ledge climb, creatures, lighting, seasons, combat and interface were made for this game.</div><div class="credit-grid">${creditLinks}</div><p class="credit-footer">Three.js is MIT-licensed. Fernwood is an independent little demo and is not endorsed by Polyfork. Individual asset attribution is also available in the included CREDITS.md file.</p></div>`;
   }
   dom.guideContent.scrollTop=0;
 }
@@ -814,7 +856,11 @@ function addEvents(){
   dom.overlayClose.addEventListener('click',closeGuide);dom.overlayScrim.addEventListener('click',closeGuide);
   dom.guideTabs.forEach(btn=>btn.addEventListener('click',()=>renderTab(btn.dataset.tab)));
   dom.dialogueClose.addEventListener('click',closeDialogue);
-  dom.mobileInteract.addEventListener('click',interact);
+  dom.mobileInteract.addEventListener('click',primaryAction);
+  dom.actJump.addEventListener('click',jump);
+  dom.actDodge.addEventListener('click',dodge);
+  dom.victoryClose.addEventListener('click',()=>{dom.victoryOverlay.hidden=true});
+  dom.deathOverlay.addEventListener('click',()=>{if(state.dead)respawnPlayer()});
   dom.dialogue.addEventListener('click',closeDialogue);
   dom.photoHint.addEventListener('click',()=>{if(state.photo)togglePhoto()});
   dom.mobilePhoto.addEventListener('click',()=>{if(!state.paused)togglePhoto()});
@@ -832,7 +878,11 @@ function addEvents(){
       if(e.code==='KeyJ'){dom.overlay.hidden?openGuide('journal'):closeGuide();return}
       if(e.code==='KeyH'){dom.overlay.hidden?openGuide('help'):closeGuide();return}
       if(e.code==='KeyP'&&dom.overlay.hidden){togglePhoto();return}
-      if((e.code==='KeyE'||e.code==='Space')&&!state.photo){interact();return}
+      if(e.code==='KeyE'&&!state.photo){interact();return}
+      if(e.code==='KeyF'&&!state.photo){fireSlingshot();return}
+      if(e.code==='Space'&&!state.photo){jump();return}
+      if(e.code==='KeyC'&&!state.photo){dodge();return}
+      if(e.code==='KeyR'&&state.dead){respawnPlayer();return}
     }
     if(!state.paused&&!state.dialogueOpen)state.keys.add(e.code);
   });
@@ -921,8 +971,8 @@ function addEvents(){
 
 function init(){
   try{
-    setupScene();makeGround();makeLake();makePaths();makeDetails();makeSky();makeCharms();
-    if(location.search.includes('debug'))window.__ferndebug={renderer,scene,state};
+    setupScene();makeGround();makeLake();makePaths();makeDetails();makeSky();setupAdventure();makeCharms();updateVitals();syncActionButton();
+    if(location.search.includes('debug'))window.__ferndebug={renderer,scene,state,adv:{pushables,gates,platforms,hounds,shots,pickups,startFlood,startCollapse,checkPlate,fireSlingshot,jump,dodge,interact}};
     applySeason(false);addEvents();refreshProgress();drawMap(dom.minimap,true);
     if(touchUI()){const fold=localStorage.getItem('fernwood-quest-fold');setQuestCollapsed(fold===null?true:fold==='1',false)}
     requestAnimationFrame(animate);loadModels();
@@ -932,4 +982,828 @@ function applySeasonInitial(){
   // Ground is created with more varied vertex colours; only the controls below change it.
   dom.seasonLabel.textContent=SEASONS[0].label;
 }
+
+/* ============================================================================
+   THE LOST EXPEDITION — adventure layer
+   Hearts, a slingshot, dodge rolls, jumping, a canoe crossing, a lantern-lit
+   mine with a weight-plate puzzle and a flood, and a collapsing ruin finale.
+   ============================================================================ */
+
+const EXP={
+  hpMax:5, stamMax:100, jumpV:10.2, gravity:22,
+  dodgeSpeed:19, dodgeTime:.19, dodgeCost:18, sprintCost:24, stamRegen:26,
+  fireCd:.48, shotSpeed:36, shotLife:1.15, shotDamage:1,
+  aggro:11, deaggro:19, houndSpeed:3.15, houndHp:2, hitRange:1.8,
+  windup:.42, attackCd:1.45, safeR:13,
+  floodTime:78, collapseTime:46
+};
+const SAFE={x:6,z:6,r:13};
+const ISLET={x:-16,z:-12,r:4.3,walk:3.35};
+const CANOE_POS={x:-1.8,z:-13.9};
+const PADDLE_POS={x:.35,z:-12.4};
+const LANTERN_POS={x:-37.4,z:-22.2};
+const MINE={x1:-45.6,x2:-30.4,z1:-38.6,z2:-21.2,spawn:{x:-38,z:-23.4}};
+const RUIN={x:24,z:36,r:9.4,entry:{x:24,z:44.4}};
+const PLATE={x:-38,z:-31.4};
+const SHARD_TOWER={x:29.4,z:-30.4,y:6.5};
+
+let walls=[], platforms=[], gates=[], pushables=[], hounds=[], shots=[], pickups=[], ruinStones=[];
+let canoeRide=null, floodMesh=null, floodMat=null, relicMesh=null, relicGlow=null, altarBarrier=null, altarSeal=null;
+let playerLight=null, collapseRocks=[], plateMesh=null, gateMesh=null;
+
+Object.assign(state,{
+  hp:EXP.hpMax, stam:EXP.stamMax, y:0, vy:0, grounded:true, mode:'walk',
+  invuln:0, dead:false, dodgeT:0, dodgeCd:0, fireCd:0, jumpQueued:false,
+  dodgeDX:0, dodgeDZ:0, paddle:saved.paddle===true, lantern:saved.lantern===true,
+  relic:saved.relic===true, mineMood:false, flood:0, floodActive:false,
+  collapse:0, collapseActive:false, won:false, shards:0
+});
+
+function isletDist(x,z){return Math.hypot(x-ISLET.x,z-ISLET.z)}
+function isletHeight(x,z){return .95*(1-smoothstep(ISLET.r*.58,ISLET.r,isletDist(x,z)))}
+function inMine(x,z){return x>MINE.x1&&x<MINE.x2&&z>MINE.z1&&z<MINE.z2}
+
+/* ---------------------------------------------------------------- geometry */
+
+function buildLedge(x,z,top,size=2.3){
+  const ground=heightAt(x,z);
+  const height=(top-ground)+1.4;
+  const mesh=new THREE.Mesh(new THREE.CylinderGeometry(size*.52,size*.64,height,6),new THREE.MeshLambertMaterial({color:0x8f917f,flatShading:true}));
+  mesh.position.set(x,top-height/2,z);mesh.rotation.y=size;
+  mesh.castShadow=true;mesh.receiveShadow=true;scene.add(mesh);
+  platforms.push({x,z,hw:size/2,hd:size/2,top});
+  return mesh;
+}
+
+function buildClimb(){
+  const steps=[[32.8,-25.4,1.3],[34.2,-26.9,2.6],[33.2,-28.9,3.9],[31.4,-30.0,5.2],[29.4,-30.4,6.5]];
+  steps.forEach(([x,z,top],i)=>buildLedge(x,z,top,i===4?3.4:3.0));
+  // a rope-and-plank marker so the climb reads as climbable
+  const flag=new THREE.Mesh(new THREE.ConeGeometry(.22,.7,4),new THREE.MeshBasicMaterial({color:0xe9b95e}));
+  flag.position.set(SHARD_TOWER.x+.9,SHARD_TOWER.y+1.1,SHARD_TOWER.z);scene.add(flag);
+}
+
+function buildMine(){
+  const rockMat=new THREE.MeshLambertMaterial({color:0x6d6f63,flatShading:true});
+  const wallMesh=(x1,x2,z1,z2,mat=rockMat)=>{
+    const w=Math.abs(x2-x1),d=Math.abs(z2-z1),h=3.6;
+    const mesh=new THREE.Mesh(new THREE.BoxGeometry(Math.max(w,.6),h,Math.max(d,.6)),mat);
+    mesh.position.set((x1+x2)/2,heightAt((x1+x2)/2,(z1+z2)/2)+h/2-.7,(z1+z2)/2);
+    mesh.castShadow=true;mesh.receiveShadow=true;scene.add(mesh);
+    return mesh;
+  };
+  const addWall=(x1,x2,z1,z2)=>{walls.push({x1,x2,z1,z2});return wallMesh(x1,x2,z1,z2)};
+  addWall(MINE.x1-.9,MINE.x1,MINE.z1-.9,MINE.z2+.9);        // west
+  addWall(MINE.x2,MINE.x2+.9,MINE.z1-.9,MINE.z2+.9);        // east
+  addWall(MINE.x1,MINE.x2,MINE.z1-.9,MINE.z1);              // north
+  addWall(MINE.x1,-39.6,MINE.z2,MINE.z2+.9);                // south, left of the mouth
+  addWall(-36.4,MINE.x2,MINE.z2,MINE.z2+.9);                // south, right of the mouth
+  addWall(-41.75,-41.2,MINE.z1,-34.5);                      // seals the shard alcove
+  // the gate the weight plate lifts (a gate, not a wall — it disappears when open)
+  const gate={x1:MINE.x1,x2:-41.75,z1:-34.5,z2:-34.0,open:false};
+  gate.mesh=wallMesh(gate.x1,gate.x2,gate.z1,gate.z2,new THREE.MeshLambertMaterial({color:0x5d6b58,flatShading:true}));
+  gates.push(gate);gateMesh=gate.mesh;
+  // pushable stone
+  const blockMesh=new THREE.Mesh(new THREE.BoxGeometry(1.5,1.5,1.5),new THREE.MeshLambertMaterial({color:0x8d9182,flatShading:true}));
+  blockMesh.castShadow=true;blockMesh.receiveShadow=true;scene.add(blockMesh);
+  const block={x:-36.6,z:-27.4,size:1.5,mesh:blockMesh,plate:false};
+  blockMesh.position.set(block.x,heightAt(block.x,block.z)+.75,block.z);
+  pushables.push(block);
+  // weight plate
+  plateMesh=new THREE.Mesh(new THREE.CylinderGeometry(.95,.95,.18,10),new THREE.MeshLambertMaterial({color:0x6f8f7a,emissive:0x21402f,emissiveIntensity:.4}));
+  plateMesh.position.set(PLATE.x,heightAt(PLATE.x,PLATE.z)+.1,PLATE.z);scene.add(plateMesh);
+  // dark mouth so the entrance reads as a hole in the hillside
+  const mouth=new THREE.Mesh(new THREE.BoxGeometry(3.2,3.4,.5),new THREE.MeshBasicMaterial({color:0x0d1512}));
+  mouth.position.set(-38,heightAt(-38,MINE.z2+.7)+1.5,MINE.z2+.72);scene.add(mouth);
+  // flood water, hidden until the shard is lifted
+  floodMat=new THREE.MeshBasicMaterial({color:0x2f5a63,transparent:true,opacity:.88});
+  floodMesh=new THREE.Mesh(new THREE.PlaneGeometry(MINE.x2-MINE.x1-.6,Math.abs(MINE.z2-MINE.z1)-.6),floodMat);
+  floodMesh.rotation.x=-Math.PI/2;floodMesh.position.set((MINE.x1+MINE.x2)/2,-2.2,(MINE.z1+MINE.z2)/2);
+  floodMesh.visible=false;scene.add(floodMesh);
+  addPickup('lantern',LANTERN_POS.x,LANTERN_POS.z);
+}
+
+function buildRuin(){
+  const stoneMat=new THREE.MeshLambertMaterial({color:0x8b8c7d,flatShading:true});
+  const floor=new THREE.Mesh(new THREE.CylinderGeometry(RUIN.r*.82,RUIN.r*.88,.6,9),new THREE.MeshLambertMaterial({color:0x94937f,flatShading:true}));
+  floor.position.set(RUIN.x,heightAt(RUIN.x,RUIN.z)-.1,RUIN.z);floor.receiveShadow=true;scene.add(floor);
+  for(let i=0;i<11;i++){
+    const a=(i/11)*Math.PI*2;
+    if(Math.abs(a-Math.PI/2)<.42)continue;   // entrance gap on the south side
+    const x=RUIN.x+Math.cos(a)*RUIN.r,z=RUIN.z+Math.sin(a)*RUIN.r;
+    const h=3.6+((i*37)%5)*.45;
+    const stone=new THREE.Mesh(new THREE.BoxGeometry(1.5,h,1.0),stoneMat);
+    stone.position.set(x,heightAt(x,z)+h/2-.3,z);stone.rotation.y=-a;
+    stone.castShadow=true;stone.receiveShadow=true;scene.add(stone);
+    colliders.push({x,z,r:1.05});ruinStones.push(stone);
+  }
+  // a fallen lintel over the entrance so the gap reads as a doorway
+  const lintel=new THREE.Mesh(new THREE.BoxGeometry(4.4,.6,1.1),stoneMat);
+  lintel.position.set(RUIN.entry.x,heightAt(RUIN.entry.x,RUIN.entry.z)+3.5,RUIN.entry.z-1.2);
+  lintel.castShadow=true;scene.add(lintel);
+  const altar=new THREE.Mesh(new THREE.CylinderGeometry(1.5,1.9,.9,8),new THREE.MeshLambertMaterial({color:0x7d8474,flatShading:true}));
+  altar.position.set(RUIN.x,heightAt(RUIN.x,RUIN.z)+.45,RUIN.z);altar.receiveShadow=true;altar.castShadow=true;scene.add(altar);
+  colliders.push({x:RUIN.x,z:RUIN.z,r:1.55});
+  // the relic itself, hovering over the altar
+  relicMesh=new THREE.Mesh(new THREE.DodecahedronGeometry(.42,0),new THREE.MeshStandardMaterial({color:0x8fe3d2,emissive:0x2ea88f,emissiveIntensity:1.5,flatShading:true,metalness:.3,roughness:.3}));
+  relicMesh.position.set(RUIN.x,heightAt(RUIN.x,RUIN.z)+2.1,RUIN.z);
+  relicMesh.visible=false;scene.add(relicMesh);
+  altarBarrier=new THREE.Mesh(new THREE.SphereGeometry(1.5,12,8,0,Math.PI*2,0,Math.PI*.62),new THREE.MeshBasicMaterial({color:0xf2c987,transparent:true,opacity:.28,side:THREE.DoubleSide,depthWrite:false}));
+  altarBarrier.position.copy(relicMesh.position);scene.add(altarBarrier);
+  // escape marker
+  altarSeal=new THREE.Mesh(new THREE.RingGeometry(1.1,1.6,18),new THREE.MeshBasicMaterial({color:0xffd98a,transparent:true,opacity:.55,side:THREE.DoubleSide,depthWrite:false}));
+  altarSeal.rotation.x=-Math.PI/2;altarSeal.position.set(RUIN.entry.x,heightAt(RUIN.entry.x,RUIN.entry.z)+.06,RUIN.entry.z);
+  altarSeal.visible=false;scene.add(altarSeal);
+}
+
+function addPickup(type,x,z){
+  const group=new THREE.Group();
+  let mesh;
+  if(type==='paddle'){
+    mesh=new THREE.Mesh(new THREE.BoxGeometry(.9,.1,.26),new THREE.MeshLambertMaterial({color:0xb98a4e}));
+    mesh.position.y=.55;mesh.rotation.z=.3;
+  }else{
+    mesh=new THREE.Group();
+    const body=new THREE.Mesh(new THREE.CylinderGeometry(.2,.26,.5,6),new THREE.MeshStandardMaterial({color:0x50624d,metalness:.5,roughness:.5}));
+    const glass=new THREE.Mesh(new THREE.CylinderGeometry(.17,.17,.3,6),new THREE.MeshBasicMaterial({color:0xffd98a}));
+    mesh.add(body);glass.position.y=.22;mesh.add(glass);
+  }
+  group.add(mesh);
+  const glow=new THREE.Mesh(new THREE.RingGeometry(.45,.62,16),new THREE.MeshBasicMaterial({color:0xffe6a8,transparent:true,opacity:.5,side:THREE.DoubleSide,depthWrite:false}));
+  glow.rotation.x=-Math.PI/2;glow.position.y=.06;group.add(glow);
+  group.position.set(x,heightAt(x,z),z);scene.add(group);
+  pickups.push({type,x,z,group,glow,taken:false});
+}
+
+function buildCanoe(){
+  const tpl=modelTemplates.canoe;
+  if(!tpl)return;
+  canoeRide=tpl.scene.clone(true);
+  canoeRide.scale.setScalar(1.1);
+  canoeRide.traverse(o=>{if(o.isMesh)o.castShadow=true});
+  canoeRide.position.set(CANOE_POS.x,-.1,CANOE_POS.z);
+  canoeRide.rotation.y=Math.PI*.15;
+  canoeRide.visible=true;scene.add(canoeRide);
+}
+
+/* ------------------------------------------------------------------ hounds */
+
+function makeHound(x,z,homeR=9){
+  const g=new THREE.Group();
+  const hide=new THREE.MeshStandardMaterial({color:0x3d4b36,flatShading:true,roughness:.94});
+  const bone=new THREE.MeshStandardMaterial({color:0xcfc098,flatShading:true,roughness:.85});
+  const body=new THREE.Mesh(new THREE.IcosahedronGeometry(.46,0),hide);
+  body.scale.set(1.45,.92,.9);body.position.y=.62;body.castShadow=true;g.add(body);
+  const hump=new THREE.Mesh(new THREE.IcosahedronGeometry(.3,0),hide);
+  hump.scale.set(1.1,1.25,1);hump.position.set(0,.92,-.12);hump.castShadow=true;g.add(hump);
+  const head=new THREE.Mesh(new THREE.ConeGeometry(.24,.66,5),hide);
+  head.rotation.x=Math.PI/2;head.position.set(0,.68,.62);head.castShadow=true;g.add(head);
+  const snout=new THREE.Mesh(new THREE.BoxGeometry(.2,.16,.22),bone);
+  snout.position.set(0,.6,.9);g.add(snout);
+  for(let i=0;i<6;i++){
+    const spike=new THREE.Mesh(new THREE.ConeGeometry(.095,.5,3),bone);
+    spike.position.set(0,.95,.34-i*.19);spike.rotation.x=-.18-.05*i;g.add(spike);
+  }
+  const tail=new THREE.Mesh(new THREE.ConeGeometry(.1,.66,3),bone);
+  tail.position.set(0,.78,-.66);tail.rotation.x=-1.9;g.add(tail);
+  const eyeMat=new THREE.MeshBasicMaterial({color:0xff9a4a});
+  for(const sx of [-.16,.16]){
+    const eye=new THREE.Mesh(new THREE.SphereGeometry(.085,6,5),eyeMat);
+    eye.position.set(sx,.78,.8);g.add(eye);
+  }
+  const legs=[];
+  for(const [lx,lz] of [[-.33,.28],[.33,.28],[-.33,-.28],[.33,-.28]]){
+    const leg=new THREE.Mesh(new THREE.BoxGeometry(.13,.5,.13),hide);
+    leg.position.set(lx,.25,lz);leg.castShadow=true;g.add(leg);legs.push(leg);
+  }
+  scene.add(g);
+  const h={mesh:g,x,z,homeX:x,homeZ:z,homeR,hp:EXP.houndHp,mode:'idle',t:0,cd:0,legs,body,alive:true,y:0,flash:0,az:Math.random()*6.28};
+  hounds.push(h);return h;
+}
+
+function spawnHoundsForWorld(){
+  makeHound(-17.6,-13.2,4);makeHound(-14.2,-10.6,4);
+  makeHound(36.2,-24.4,7);makeHound(32.6,-33.0,7);
+  makeHound(-42.6,-27.4,6);makeHound(-34.6,-35.2,6);makeHound(-38.6,-30.4,5);
+  makeHound(18.6,-13.6,9);
+}
+
+function houndBlocked(x,z){
+  if(Math.hypot(x,z)>64)return true;
+  if(inMine(x,z))return false;
+  if(lakeRadius(x,z)<1.06)return true;
+  for(const c of colliders)if(dist2(x,z,c.x,c.z)<c.r+.3)return true;
+  return false;
+}
+
+function updateHounds(dt){
+  for(const h of hounds){
+    if(!h.alive)continue;
+    const d=Math.hypot(state.x-h.x,state.z-h.z);
+    h.cd=Math.max(0,h.cd-dt);
+    if(h.flash>0)h.flash-=dt;
+    const canSee=state.mode==='walk'&&!state.dead&&d<EXP.aggro&&(inMine(state.x,state.z)===inMine(h.x,h.z));
+    if(canSee&&h.mode==='idle')h.mode='chase';
+    if(h.mode!=='idle'&&(d>EXP.deaggro||state.dead||state.mode!=='walk'))h.mode='idle';
+    let speed=0,targetX=h.homeX,targetZ=h.homeZ,moving=false;
+    if(h.mode==='chase'){
+      if(d>EXP.hitRange){
+        speed=EXP.houndSpeed;
+        const ang=Math.atan2(state.x-h.x,state.z-h.z);
+        targetX=h.x+Math.sin(ang)*2;targetZ=h.z+Math.cos(ang)*2;
+      }else if(h.cd<=0){
+        h.mode='windup';h.t=EXP.windup;
+      }
+      h.az=Math.atan2(state.x-h.x,state.z-h.z);
+    }else if(h.mode==='windup'){
+      h.t-=dt;
+      if(h.t<=0){
+        h.mode='recover';h.t=.5;h.cd=EXP.attackCd;
+        const dd=Math.hypot(state.x-h.x,state.z-h.z);
+        if(dd<EXP.hitRange+.55)damagePlayer(1,h.x,h.z);
+      }
+    }else if(h.mode==='recover'){
+      h.t-=dt;if(h.t<=0)h.mode=d<EXP.aggro?'chase':'idle';
+    }else{
+      // drift slowly around its home patch
+      h.t+=dt;
+      if(h.t>2.6){h.t=0;h.az=Math.random()*6.28}
+      const hx=h.homeX+Math.sin(h.az)*(h.homeR*.65),hz=h.homeZ+Math.cos(h.az)*(h.homeR*.65);
+      const dd=Math.hypot(hx-h.x,hz-h.z);
+      if(dd>.6&&Math.sin(h.t*4)>.2){speed=EXP.houndSpeed*.32;targetX=hx;targetZ=hz}
+    }
+    if(speed>0){
+      const ang=Math.atan2(targetX-h.x,targetZ-h.z);
+      const nx=h.x+Math.sin(ang)*speed*dt,nz=h.z+Math.cos(ang)*speed*dt;
+      if(!houndBlocked(nx,h.z))h.x=nx;
+      if(!houndBlocked(h.x,nz))h.z=nz;
+      moving=true;
+    }
+    const gy=heightAt(h.x,h.z);
+    h.y=gy;
+    h.mesh.position.set(h.x,gy+(h.mode==='windup'?-.12:0),h.z);
+    h.mesh.rotation.y=h.az;
+    const bob=moving?Math.sin(performance.now()*.014)*.06:Math.sin(performance.now()*.003+h.homeX)*.03;
+    h.body.position.y=.66+bob;
+    h.legs.forEach((leg,i)=>{leg.rotation.x=moving?Math.sin(performance.now()*.017+i*1.7)*.7:0});
+    h.mesh.scale.setScalar(h.mode==='windup'?1+ .09*Math.sin(performance.now()*.03):1);
+    if(h.flash>0&&!h.flashDone){h.body.material=h.body.material.clone();h.body.material.emissive=new THREE.Color(0x8a2415);h.flashDone=true}
+    else if(h.flash<=0&&h.flashDone){h.body.material.emissive=new THREE.Color(0x000000);h.flashDone=false}
+  }
+}
+
+function hurtHound(h,n,fx,fz){
+  if(!h.alive)return;
+  h.hp-=n;h.flash=.16;
+  h.mode='chase';
+  const ang=Math.atan2(h.x-fx,h.z-fz);
+  const nx=h.x+Math.sin(ang)*.5,nz=h.z+Math.cos(ang)*.5;
+  if(!houndBlocked(nx,nz)){h.x=nx;h.z=nz}
+  if(h.hp<=0)killHound(h);
+}
+function killHound(h){
+  h.alive=false;h.mesh.visible=false;
+  burst(h.x,heightAt(h.x,h.z)+.7,h.z,0x9d9070,12);
+}
+
+/* -------------------------------------------------------------- projectiles */
+
+function fireSlingshot(){
+  if(state.fireCd>0||state.dead||state.mode!=='walk'||state.paused||state.dialogueOpen)return;
+  state.fireCd=EXP.fireCd;
+  // gentle aim assist: snap to the closest hound within a generous cone
+  let best=null,bestD=99;
+  for(const h of hounds){
+    if(!h.alive)continue;
+    const d=Math.hypot(h.x-state.x,h.z-state.z);
+    if(d<15&&d<bestD){best=h;bestD=d}
+  }
+  if(best)state.facing=Math.atan2(best.x-state.x,best.z-state.z);
+  const dirX=Math.sin(state.facing),dirZ=Math.cos(state.facing);
+  const geo=new THREE.SphereGeometry(.11,6,5);
+  const mat=new THREE.MeshBasicMaterial({color:0xffe9b0});
+  const shot=new THREE.Mesh(geo,mat);
+  shot.position.set(state.x+dirX*.6,state.y+.95,state.z+dirZ*.6);
+  scene.add(shot);
+  shots.push({mesh:shot,x:shot.position.x,z:shot.position.z,y:shot.position.y,dx:dirX,dz:dirZ,life:EXP.shotLife});
+  if(playerActions&&state.grounded)setAnimation('Idle');
+  if(playerRoot)playerRoot.rotation.y=state.facing;
+}
+
+function distToSegment(px,pz,ax,az,bx,bz){
+  const dx=bx-ax,dz=bz-az,len2=dx*dx+dz*dz;
+  let t=len2?((px-ax)*dx+(pz-az)*dz)/len2:0;
+  t=Math.max(0,Math.min(1,t));
+  return Math.hypot(px-(ax+dx*t),pz-(az+dz*t));
+}
+function updateShots(dt){
+  for(let i=shots.length-1;i>=0;i--){
+    const s=shots[i];
+    s.life-=dt;
+    const px=s.x,pz=s.z;
+    s.x+=s.dx*EXP.shotSpeed*dt;s.z+=s.dz*EXP.shotSpeed*dt;
+    s.mesh.position.set(s.x,s.y,s.z);
+    let hit=false;
+    // swept test so a stone never tunnels through a hound on a slow frame
+    for(const h of hounds){
+      if(!h.alive)continue;
+      if(distToSegment(h.x,h.z,px,pz,s.x,s.z)<.9&&Math.abs((h.y+.7)-s.y)<1.6){
+        hurtHound(h,EXP.shotDamage,state.x,state.z);
+        burst(h.x,h.y+.7,h.z,0xffd27a,7);hit=true;break;
+      }
+    }
+    if(hit||s.life<=0){
+      if(!hit&&s.life<=0)burst(s.x,s.y,s.z,0xd8d3c0,4);
+      scene.remove(s.mesh);s.mesh.geometry.dispose();shots.splice(i,1);
+    }
+  }
+}
+
+const burstPool=[];
+function burst(x,y,z,color,count=8){
+  for(let i=0;i<count;i++){
+    const p=new THREE.Mesh(new THREE.TetrahedronGeometry(.07+Math.random()*.06),new THREE.MeshBasicMaterial({color}));
+    p.position.set(x,y,z);
+    scene.add(p);
+    burstPool.push({mesh:p,vx:(Math.random()-.5)*3.2,vy:1.4+Math.random()*2.4,vz:(Math.random()-.5)*3.2,life:.62});
+  }
+}
+function updateBursts(dt){
+  for(let i=burstPool.length-1;i>=0;i--){
+    const p=burstPool[i];p.life-=dt;
+    p.vy-=9*dt;p.mesh.position.x+=p.vx*dt;p.mesh.position.y+=p.vy*dt;p.mesh.position.z+=p.vz*dt;
+    p.mesh.scale.setScalar(Math.max(.01,p.life*1.5));
+    if(p.life<=0){scene.remove(p.mesh);p.mesh.geometry.dispose();burstPool.splice(i,1)}
+  }
+}
+
+/* ------------------------------------------------------------------ damage */
+
+function damagePlayer(n,fx,fz){
+  if(state.invuln>0||state.dead||state.won)return;
+  state.hp=Math.max(0,state.hp-n);
+  state.invuln=1.15;
+  const ang=Math.atan2(state.x-(fx??state.x),state.z-(fz??state.z));
+  tryMove(Math.sin(ang)*.9,Math.cos(ang)*.9);
+  dom.damageFlash.classList.remove('hit');void dom.damageFlash.offsetWidth;dom.damageFlash.classList.add('hit');
+  if(navigator.vibrate)try{navigator.vibrate(70)}catch{}
+  updateVitals();
+  if(state.hp<=0)playerDown();
+}
+
+function playerDown(){
+  if(state.dead)return;
+  state.dead=true;resetTouchInput();
+  dom.deathOverlay.hidden=false;
+  if(state.mode==='canoe')disembark(true);
+  clearTimeout(dom._respawnT);
+  dom._respawnT=setTimeout(()=>{respawnPlayer()},2300);
+}
+function respawnPlayer(){
+  state.dead=false;state.hp=Math.max(3,Math.floor(EXP.hpMax*.6));state.y=heightAt(state.x,state.z);
+  state.x=4;state.z=14;state.y=heightAt(4,14);state.vy=0;state.grounded=true;
+  state.invuln=1.6;state.stam=EXP.stamMax;
+  state.floodActive=false;state.collapseActive=false;
+  if(floodMesh)floodMesh.visible=false;
+  clearCollapse();
+  for(const h of hounds){if(!h.alive){h.alive=true;h.mesh.visible=true;h.hp=EXP.houndHp;h.x=h.homeX;h.z=h.homeZ;h.mode='idle'}}
+  dom.deathOverlay.hidden=true;
+  updateVitals();hideMission();
+  showSmallToast('Mira found you on the trail and walked you back');
+  applyTime(false);
+}
+
+let lastHp=-1,lastStam=-1;
+function updateVitals(){
+  if(state.hp!==lastHp){
+    lastHp=state.hp;
+    const hearts=dom.hearts.children;
+    for(let i=0;i<hearts.length;i++)hearts[i].classList.toggle('empty',i>=state.hp);
+  }
+  const st=Math.round(state.stam);
+  if(st!==lastStam){
+    lastStam=st;
+    dom.staminaFill.style.width=`${Math.max(0,Math.min(100,(st/EXP.stamMax)*100))}%`;
+    dom.staminaFill.classList.toggle('low',st<22);
+  }
+}
+
+/* -------------------------------------------------------------- navigation */
+
+function groundYAt(x,z,feetY){
+  let best=heightAt(x,z);
+  for(const p of platforms){
+    if(Math.abs(x-p.x)<=p.hw&&Math.abs(z-p.z)<=p.hd&&p.top<=feetY+.4&&p.top>best)best=p.top;
+  }
+  return best;
+}
+const STEP_UP=2.4;   // anything this far above your feet can be scrambled onto
+function platformBlocked(x,z,feetY){
+  for(const p of platforms)
+    if(Math.abs(x-p.x)<=p.hw+.3&&Math.abs(z-p.z)<=p.hd+.3&&p.top>feetY+.6&&p.top-feetY>STEP_UP)return true;
+  return false;
+}
+function climbTopAt(x,z,feetY){
+  let best=null;
+  for(const p of platforms)
+    if(Math.abs(x-p.x)<=p.hw&&Math.abs(z-p.z)<=p.hd&&p.top>feetY+.06&&p.top-feetY<=STEP_UP)
+      if(best===null||p.top>best)best=p.top;
+  return best;
+}
+function hitsWall(x,z,pad=0){
+  for(const w of walls)
+    if(x>w.x1-pad&&x<w.x2+pad&&z>w.z1-pad&&z<w.z2+pad)return true;
+  for(const g of gates)
+    if(!g.open&&x>g.x1-pad&&x<g.x2+pad&&z>g.z1-pad&&z<g.z2+pad)return true;
+  return false;
+}
+function blockAt(x,z){
+  for(const b of pushables){
+    if(Math.abs(x-b.x)<b.size/2+.42&&Math.abs(z-b.z)<b.size/2+.42)return b;
+  }
+  return null;
+}
+function canBlockStand(x,z,size){
+  if(hitsWall(x,z,size/2+.05))return false;
+  for(const c of colliders)if(dist2(x,z,c.x,c.z)<c.r+size*.6)return false;
+  return true;
+}
+function moveBlock(b,dx,dz){
+  const nx=b.x+dx,nz=b.z+dz;
+  if(!canBlockStand(nx,nz,b.size))return false;
+  b.x=nx;b.z=nz;
+  b.mesh.position.set(b.x,heightAt(b.x,b.z)+.75,b.z);
+  checkPlate();
+  return true;
+}
+function checkPlate(){
+  const b=pushables[0];if(!b)return;
+  const on=Math.hypot(b.x-PLATE.x,b.z-PLATE.z)<1.05;
+  if(on===b.plate)return;
+  b.plate=on;
+  for(const g of gates){
+    g.open=on;
+    if(g.mesh){
+      g.mesh.visible=!on;
+    }
+  }
+  plateMesh.material.emissive.setHex(on?0x2f8a5e:0x21402f);
+  plateMesh.material.emissiveIntensity=on?1.1:.4;
+  if(on){showSmallToast('The old gate grinds open');burst(PLATE.x,heightAt(PLATE.x,PLATE.z)+.4,PLATE.z,0x7fd6a5,14)}
+}
+
+/* ---------------------------------------------------------------- movement */
+
+function tryStep(dx,dz){
+  const nx=state.x+dx,nz=state.z+dz;
+  const b=blockAt(nx,nz);
+  if(b&&state.mode==='walk'&&!moveBlock(b,dx,dz))return false;
+  if(isWalkable(nx,nz)){state.x=nx;state.z=nz;return true}
+  return false;
+}
+function tryMove(dx,dz){tryStep(dx,0);tryStep(0,dz)}
+
+function updatePlayer(dt){
+  state.fireCd=Math.max(0,state.fireCd-dt);
+  state.dodgeCd=Math.max(0,state.dodgeCd-dt);
+  state.invuln=Math.max(0,state.invuln-dt);
+  if(state.dead){setAnimation('Idle');if(playerRoot)playerRoot.position.set(state.x,state.y,state.z);return}
+
+  let forward=0,strafe=0,analog=0;
+  if(state.keys.has('KeyW')||state.keys.has('ArrowUp')||state.touch.has('forward'))forward++;
+  if(state.keys.has('KeyS')||state.keys.has('ArrowDown')||state.touch.has('back'))forward--;
+  if(state.keys.has('KeyD')||state.keys.has('ArrowRight')||state.touch.has('right'))strafe++;
+  if(state.keys.has('KeyA')||state.keys.has('ArrowLeft')||state.touch.has('left'))strafe--;
+  if(state.stick.active){
+    const mag=Math.hypot(state.stick.x,state.stick.y);
+    if(mag>.14){forward+=-state.stick.y;strafe+=state.stick.x;analog=Math.min(1,mag)}
+  }
+  const busy=state.paused||state.dialogueOpen;
+  const moving=(forward!==0||strafe!==0)&&!busy;
+
+  if(state.dodgeT>0){
+    state.dodgeT-=dt;
+    tryMove(state.dodgeDX*EXP.dodgeSpeed*dt,state.dodgeDZ*EXP.dodgeSpeed*dt);
+    setAnimation('Run');
+  }else if(moving){
+    const length=Math.hypot(forward,strafe);forward/=length;strafe/=length;
+    const dx=(-Math.sin(state.yaw)*forward+Math.cos(state.yaw)*strafe),dz=(-Math.cos(state.yaw)*forward-Math.sin(state.yaw)*strafe);
+    const wantsRun=(state.keys.has('ShiftLeft')||state.keys.has('ShiftRight')||analog>.84);
+    const running=wantsRun&&state.stam>3;
+    let speed=(running?9.1:5.25)*(analog?clamp(analog,.45,1):1);
+    if(state.mode==='canoe')speed=4.6;
+    if(running)state.stam=Math.max(0,state.stam-EXP.sprintCost*dt);
+    tryMove(dx*speed*dt,dz*speed*dt);
+    const targetAngle=Math.atan2(dx,dz);
+    state.facing+=Math.atan2(Math.sin(targetAngle-state.facing),Math.cos(targetAngle-state.facing))*Math.min(1,dt*12);
+    setAnimation(running?'Run':'Walk');
+  }else{
+    setAnimation('Idle');
+    state.stam=Math.min(EXP.stamMax,state.stam+EXP.stamRegen*dt);
+  }
+
+  // ---- vertical: jumping, ledges, gravity
+  if(state.mode==='walk'){
+    const support=groundYAt(state.x,state.z,state.y);
+    if(state.grounded){
+      if(state.y>support+.08){state.grounded=false;state.vy=0}
+      else state.y=support;
+      if(state.jumpQueued){state.vy=EXP.jumpV;state.grounded=false;state.y+=.03}
+    }
+    if(!state.grounded){
+      state.vy-=EXP.gravity*dt;
+      state.y+=state.vy*dt;
+      const land=groundYAt(state.x,state.z,state.y);
+      if(state.y<=land){state.y=land;state.vy=0;state.grounded=true}
+    }
+    state.jumpQueued=false;
+    // scrambling: walk into a nearby ledge and you climb it (no pixel-perfect hops)
+    const top=climbTopAt(state.x,state.z,state.y);
+    if(top!==null&&top>state.y+.04){
+      state.y=Math.min(top,state.y+11*dt);
+      state.vy=0;
+      if(state.y>=top-.02){state.y=top;state.grounded=true}
+      else state.grounded=false;
+    }
+  }else{
+    state.y=heightAt(state.x,state.z)-.18;state.grounded=true;state.jumpQueued=false;
+  }
+
+  if(playerRoot){
+    playerRoot.position.set(state.x,state.y,state.z);
+    playerRoot.rotation.y=state.facing;
+    playerRoot.visible=state.mode==='walk';
+  }
+  if(canoeRide){
+    canoeRide.visible=state.mode==='canoe';
+    if(state.mode==='canoe'){canoeRide.position.set(state.x,-.12,state.z);canoeRide.rotation.y=state.facing+Math.PI/2}
+  }
+
+  // the canoe beaches itself on the nearest shore
+  if(state.mode==='canoe'&&(lakeRadius(state.x,state.z)>.94||isletDistTo(state.x,state.z)<3.45))disembark();
+
+  updateVitals();
+  if(!busy){updatePlace();updateNearby()}
+}
+
+function jump(){
+  if(state.dead||state.paused||state.dialogueOpen||state.mode!=='walk')return;
+  if(state.grounded){state.jumpQueued=true}
+}
+function dodge(){
+  if(state.dead||state.paused||state.dialogueOpen||state.mode!=='walk'||state.dodgeCd>0||state.stam<EXP.dodgeCost)return;
+  let dx=0,dz=0;
+  if(state.stick.active&&Math.hypot(state.stick.x,state.stick.y)>.3){
+    dx=state.stick.x;dz=state.stick.y;
+  }else{
+    const f=(state.keys.has('KeyW')||state.touch.has('forward'))?1:(state.keys.has('KeyS')||state.touch.has('back'))?-1:0;
+    const s=(state.keys.has('KeyD')||state.touch.has('right'))?1:(state.keys.has('KeyA')||state.touch.has('left'))?-1:0;
+    dx=-Math.sin(state.yaw)*f+Math.cos(state.yaw)*s;
+    dz=-Math.cos(state.yaw)*f-Math.sin(state.yaw)*s;
+  }
+  const len=Math.hypot(dx,dz)||1;
+  state.dodgeDX=dx/len;state.dodgeDZ=dz/len;
+  state.dodgeT=EXP.dodgeTime;state.dodgeCd=.75;state.stam-=EXP.dodgeCost;
+  state.invuln=Math.max(state.invuln,.32);
+  state.facing=Math.atan2(state.dodgeDX,state.dodgeDZ);
+  if(navigator.vibrate)try{navigator.vibrate(25)}catch{}
+  updateVitals();
+}
+
+/* ------------------------------------------------------------------- canoe */
+
+function boardCanoe(){
+  if(!state.paddle){showSmallToast('The canoe has no paddle. Look around the dock.');return}
+  state.mode='canoe';state.x=CANOE_POS.x;state.z=CANOE_POS.z;
+  state.y=heightAt(state.x,state.z)-.18;state.grounded=true;
+  showSmallToast('Paddling out — the far side is lost in fog');
+  updateNearby(true);
+}
+function disembark(silent){
+  state.mode='walk';
+  const candidates=[
+    [0,-11.6],[.4,-12.6],[-1.2,-13.4],[1.2,-10.4],
+    [ISLET.x,ISLET.z+ISLET.walk*.72],[ISLET.x,ISLET.z-ISLET.walk*.72],
+    [ISLET.x+ISLET.walk*.72,ISLET.z],[ISLET.x-ISLET.walk*.72,ISLET.z]
+  ].filter(([x,z])=>isWalkable(x,z,0));
+  let best=null,bestD=Infinity;
+  for(const c of candidates){
+    const d=Math.hypot(c[0]-state.x,c[1]-state.z);
+    if(d<bestD){bestD=d;best=c}
+  }
+  if(!best){
+    outer: for(let r=1;r<30;r+=.7){
+      for(let a=0;a<Math.PI*2;a+=.45){
+        const sx=state.x+Math.cos(a)*r,sz=state.z+Math.sin(a)*r;
+        if(isWalkable(sx,sz,0)){best=[sx,sz];break outer}
+      }
+    }
+  }
+  if(best){state.x=best[0];state.z=best[1]}
+  state.y=heightAt(state.x,state.z);state.vy=0;state.grounded=true;
+  if(!silent)showSmallToast(isletDistTo(state.x,state.z)<ISLET.walk+1?'Ashore on the fog islet':'Ashore again');
+  updateNearby(true);
+}
+
+/* -------------------------------------------------------------- mine mood */
+
+function enterMineMood(){
+  scene.background.set(0x0c1214);
+  scene.fog.color.set(0x0b1113);scene.fog.density=.07;
+  hemiLight.intensity=.62;sunLight.intensity=.18;
+  renderer.toneMappingExposure=1.02;
+  starField.visible=false;
+  dom.darkVeil.classList.add('on');
+  if(!playerLight){
+    playerLight=new THREE.PointLight(0xffcf85,0,13,2);scene.add(playerLight);
+  }
+  playerLight.position.set(state.x,state.y+1.4,state.z);
+  playerLight.intensity=state.lantern?3.1:1.05;
+  playerLight.distance=state.lantern?14:7.5;
+  if(!state.lantern)showSmallToast('It is pitch black in here. Find a light.');
+}
+function exitMineMood(){
+  dom.darkVeil.classList.remove('on');
+  if(playerLight)playerLight.intensity=0;
+  scene.fog.density=state.seasonIndex===2?.010:.011;   // applyTime() leaves density alone
+  applyTime(false);
+}
+
+function checkMineZone(){
+  const inside=state.mode==='walk'&&inMine(state.x,state.z);
+  if(inside!==state.mineMood){
+    state.mineMood=inside;
+    if(inside)enterMineMood();else exitMineMood();
+  }
+  if(state.mineMood&&playerLight)playerLight.position.set(state.x,state.y+1.3,state.z);
+}
+
+/* ------------------------------------------------------------------ flood */
+
+function startFlood(){
+  if(state.floodActive)return;
+  state.floodActive=true;state.flood=0;
+  floodMesh.visible=true;floodMesh.position.y=heightAt((MINE.x1+MINE.x2)/2,(MINE.z1+MINE.z2)/2)-1.1;
+  showMission('THE MINE IS FLOODING','GET OUT');
+  showSmallToast('Water is pouring in. Run for the entrance!');
+}
+function updateFlood(dt){
+  if(!state.floodActive)return;
+  state.flood+=dt/EXP.floodTime;
+  const floor=heightAt(-38,-30);
+  floodMesh.position.y=floor-1.1+state.flood*3.6;
+  const remain=Math.max(0,EXP.floodTime*(1-state.flood));
+  updateMission(remain);
+  if(floodMesh.position.y>state.y+.35){
+    // swept away — back to the entrance, one heart lighter
+    damagePlayer(1,state.x,state.z);
+    state.x=MINE.spawn.x;state.z=MINE.spawn.z;state.y=heightAt(state.x,state.z);state.vy=0;
+    endFlood();
+    showSmallToast('The water swept you out');
+    return;
+  }
+  if(!inMine(state.x,state.z)){
+    endFlood();
+    showSmallToast('You made it out of the mine');
+  }
+}
+function endFlood(){
+  state.floodActive=false;state.flood=0;
+  if(floodMesh){floodMesh.visible=false;floodMesh.position.y=-2.2}
+  hideMission();
+}
+
+/* ---------------------------------------------------------------- collapse */
+
+function startCollapse(){
+  if(state.collapseActive||state.won)return;
+  state.collapseActive=true;state.collapse=EXP.collapseTime;
+  altarSeal.visible=true;
+  if(relicMesh)relicMesh.visible=false;
+  showMission('THE RUIN IS COMING DOWN','GET TO THE LIGHT');
+  showSmallToast('Take the relic and run!');
+  dom.collapseTimer=0;
+}
+function updateCollapse(dt){
+  if(!state.collapseActive)return;
+  state.collapse-=dt;
+  updateMission(Math.max(0,state.collapse));
+  dom.collapseTimer=(dom.collapseTimer||0)+dt;
+  if(dom.collapseTimer>.42){
+    dom.collapseTimer=0;
+    const a=Math.random()*Math.PI*2,r=Math.random()*RUIN.r*.9;
+    const x=RUIN.x+Math.cos(a)*r,z=RUIN.z+Math.sin(a)*r;
+    const warn=new THREE.Mesh(new THREE.CircleGeometry(1.9,16),new THREE.MeshBasicMaterial({color:0xff8f5a,transparent:true,opacity:.3,side:THREE.DoubleSide,depthWrite:false}));
+    warn.rotation.x=-Math.PI/2;warn.position.set(x,heightAt(x,z)+.05,z);scene.add(warn);
+    const rock=new THREE.Mesh(new THREE.DodecahedronGeometry(.8+Math.random()*.5,0),new THREE.MeshLambertMaterial({color:0x8a8779,flatShading:true}));
+    rock.position.set(x,heightAt(x,z)+17,z);rock.castShadow=true;scene.add(rock);
+    collapseRocks.push({rock,warn,x,z,vy:-2,t:0,landed:false});
+  }
+  for(let i=collapseRocks.length-1;i>=0;i--){
+    const r=collapseRocks[i];
+    if(r.landed){r.t+=dt;if(r.t>.35){scene.remove(r.rock);scene.remove(r.warn);collapseRocks.splice(i,1)}continue}
+    r.vy-=26*dt;r.rock.position.y+=r.vy*dt;r.rock.rotation.x+=dt*3;r.rock.rotation.z+=dt*2;
+    const floor=heightAt(r.x,r.z);
+    if(r.rock.position.y<=floor+.6){
+      r.rock.position.y=floor+.4;r.landed=true;r.t=0;
+      r.warn.material.opacity=0;
+      burst(r.x,floor+.6,r.z,0x9a9789,10);
+      if(Math.hypot(state.x-r.x,state.z-r.z)<2.3)damagePlayer(1,r.x,r.z);
+      if(navigator.vibrate)try{navigator.vibrate(30)}catch{}
+    }
+  }
+  if(Math.hypot(state.x-RUIN.entry.x,state.z-RUIN.entry.z)<2.4||state.collapse<=0){
+    finishExpedition(state.collapse>0);
+  }
+}
+function clearCollapse(){
+  for(const r of collapseRocks){scene.remove(r.rock);scene.remove(r.warn)}
+  collapseRocks=[];state.collapseActive=false;
+  if(altarSeal)altarSeal.visible=false;
+  hideMission();
+}
+function finishExpedition(escaped){
+  if(state.won)return;
+  state.collapseActive=false;
+  for(const r of collapseRocks){scene.remove(r.rock);scene.remove(r.warn)}
+  collapseRocks=[];
+  if(!escaped){
+    damagePlayer(2,RUIN.x,RUIN.z);
+    state.x=RUIN.entry.x;state.z=RUIN.entry.z+2;state.y=heightAt(state.x,state.z);
+    showSmallToast('The ceiling drove you back out. Try again.');
+    altarSeal.visible=false;hideMission();
+    if(!state.relic){altarBarrier.visible=true;if(relicMesh)relicMesh.visible=true}
+    return;
+  }
+  state.won=true;state.relic=true;saveGame();
+  relicMesh.visible=false;altarBarrier.visible=false;altarSeal.visible=false;
+  dom.victoryOverlay.hidden=false;
+  hideMission();
+  showSmallToast('The Relic of the Vale is recovered');
+}
+
+/* --------------------------------------------------------------- pickups */
+
+function collectPickup(p){
+  if(p.taken)return;
+  p.taken=true;p.group.visible=false;
+  if(p.type==='paddle'){state.paddle=true;showSmallToast('Paddle found — the docked canoe is ready')}
+  if(p.type==='lantern'){state.lantern=true;showSmallToast('Lantern lit — the mine is passable now')}
+  saveGame();updateNearby(true);
+}
+
+/* ------------------------------------------------------------------ props */
+
+function updateProps(dt){
+  const t=performance.now()*.001;
+  for(const p of pickups){
+    if(p.taken)continue;
+    p.glow.rotation.z+=dt*1.2;
+    p.group.position.y=heightAt(p.x,p.z)+Math.sin(t*1.8)*.06;
+  }
+  if(relicMesh&&relicMesh.visible){relicMesh.rotation.y+=dt*.8;relicMesh.position.y=heightAt(RUIN.x,RUIN.z)+2.1+Math.sin(t*1.6)*.09}
+  if(altarBarrier&&altarBarrier.visible)altarBarrier.rotation.y+=dt*.4;
+  if(altarSeal&&altarSeal.visible)altarSeal.material.opacity=.35+.25*Math.sin(t*5);
+  if(plateMesh)plateMesh.rotation.y+=dt*.2;
+  if(canoeRide&&!canoeRide.visible){canoeRide.position.y=-.1+Math.sin(t*1.4)*.04}
+  const shards=state.found.size;
+  if(shards>=3&&relicMesh&&!state.relic&&!relicMesh.visible){relicMesh.visible=true;altarBarrier.visible=false}
+}
+
+/* --------------------------------------------------------------- missions */
+
+function showMission(label,sub){dom.app.classList.add('mission-on');dom.missionTimer.hidden=false;dom.missionLabel.textContent=sub;dom.missionTitle.textContent=label;dom.interactPrompt.hidden=true}
+function updateMission(seconds){
+  dom.missionTime.textContent=Math.ceil(seconds);
+  const total=state.floodActive?EXP.floodTime:EXP.collapseTime;
+  const pct=Math.max(0,Math.min(1,seconds/total));
+  dom.missionFill.style.width=`${pct*100}%`;
+  dom.missionFill.classList.toggle('urgent',seconds<12);
+  dom.missionTimer.classList.toggle('urgent',seconds<12);
+}
+function hideMission(){dom.app.classList.remove('mission-on');dom.missionTimer.hidden=true;state.near=null;updateNearby(true)}
+
+/* ------------------------------------------------------------------ setup */
+
+function setupAdventure(){
+  buildClimb();
+  buildMine();
+  buildRuin();
+  addPickup('paddle',PADDLE_POS.x,PADDLE_POS.z);
+  spawnHoundsForWorld();
+  state.y=heightAt(state.x,state.z);
+  buildCanoe();
+  updateVitals();
+}
+
+function updateAdventure(dt){
+  checkMineZone();
+  updateHounds(dt);
+  updateShots(dt);
+  updateBursts(dt);
+  updateProps(dt);
+  updateFlood(dt);
+  updateCollapse(dt);
+}
+
 init();

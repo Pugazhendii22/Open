@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="format-detection" content="telephone=no" />
   <meta name="theme-color" content="#d5e7d7" />
-  <meta name="description" content="Fernwood is a tiny, playable open-world adventure built with Polyfork 3D models. Wander, discover places and collect the lost wayfinder charms." />
-  <title>Fernwood — a little world to wander</title>
+  <meta name="description" content="Fernwood: The Lost Expedition. A playable open-world adventure built with Polyfork 3D models — three map shards, a fog crossing, a flooded mine, and a ruin that collapses around you." />
+  <title>Fernwood — The Lost Expedition</title>
   <link rel="stylesheet" href="styles.css" />
   <script type="importmap">
     {"imports":{"three":"./vendor/three.module.js","three/addons/":"./vendor/examples/jsm/"}}
@@ -32,6 +32,9 @@
     <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M4 12h15m-6-6 6 6-6 6"/></symbol>
     <symbol id="i-spark" viewBox="0 0 24 24"><path d="m12 2 1.7 7.3L21 12l-7.3 2.7L12 22l-1.7-7.3L3 12l7.3-2.7L12 2Z"/></symbol>
     <symbol id="i-check" viewBox="0 0 24 24"><path d="m4.5 12 5 5 10-10"/></symbol>
+    <symbol id="i-jump" viewBox="0 0 24 24"><path d="M6 20h10M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5"/></symbol>
+    <symbol id="i-dash" viewBox="0 0 24 24"><path d="M3 8h7l4 4-4 4H3M14 6h6M14 18h6"/></symbol>
+    <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 2 5 13h6l-1 9 8-11h-6l1-9Z"/></symbol>
     <symbol id="i-camera" viewBox="0 0 24 24"><path d="M3 7h4l1.7-2h6.6L17 7h4v12H3Z"/><circle cx="12" cy="13" r="3.3"/></symbol>
   </svg>
 
@@ -51,7 +54,7 @@
       <header class="topbar">
         <div class="brand" aria-label="Fernwood game">
           <span class="brand-emblem"><svg><use href="#i-leaf"/></svg></span>
-          <span class="brand-copy"><strong>fernwood<span class="brand-dot">.</span></strong><small>A LITTLE WORLD TO WANDER</small></span>
+          <span class="brand-copy"><strong>fernwood<span class="brand-dot">.</span></strong><small>THE LOST EXPEDITION</small></span>
         </div>
 
         <div class="world-controls">
@@ -75,16 +78,16 @@
       <aside class="quest-card" id="quest-card" aria-label="Current quest">
         <button id="quest-toggle" class="quest-toggle" type="button" aria-expanded="true" aria-controls="quest-body">
           <span class="quest-toggle-label"><span class="tiny-spark">✦</span> YOUR ADVENTURE</span>
-          <span class="quest-toggle-meta"><span id="quest-mini-count">0 / 5</span><svg class="quest-chevron"><use href="#i-arrow"/></svg></span>
+          <span class="quest-toggle-meta"><span id="quest-mini-count">0 / 3</span><svg class="quest-chevron"><use href="#i-arrow"/></svg></span>
         </button>
         <div class="quest-body" id="quest-body">
-          <div class="quest-topline"><span class="eyebrow"><span class="tiny-spark">✦</span> YOUR ADVENTURE</span><span class="quest-number">01 / 01</span></div>
-          <h1>Follow the<br><em>little lights.</em></h1>
-          <p>Five lost wayfinder charms are tucked around the forest. Take the long way. See what you find.</p>
+          <div class="quest-topline"><span class="eyebrow"><span class="tiny-spark">✦</span> YOUR ADVENTURE</span><span class="quest-number">EXPEDITION 01</span></div>
+          <h1>Find the<br><em>lost expedition.</em></h1>
+          <p>Three shards of a broken map are hidden across Fernwood. Bring them to the ruin and the Relic of the Vale is yours.</p>
           <div class="quest-divider"></div>
-          <div class="quest-progress-header"><span>CHARMS FOUND</span><strong id="progress-count">0 <span>/ 5</span></strong></div>
-          <div class="charm-progress" id="charm-progress" aria-label="0 of 5 charms found">
-            <span class="charm-slot">✦</span><span class="charm-slot">✦</span><span class="charm-slot">✦</span><span class="charm-slot">✦</span><span class="charm-slot">✦</span>
+          <div class="quest-progress-header"><span>SHARDS FOUND</span><strong id="progress-count">0 <span>/ 3</span></strong></div>
+          <div class="charm-progress" id="charm-progress" aria-label="0 of 3 map shards found">
+            <span class="charm-slot">◈</span><span class="charm-slot">◈</span><span class="charm-slot">◈</span>
           </div>
           <button id="quest-journal" class="quest-link" type="button"><span>Open field journal</span><svg><use href="#i-arrow"/></svg></button>
         </div>
@@ -99,7 +102,7 @@
       <div class="controls-card" aria-label="Movement controls">
         <span class="controls-eyebrow">A LITTLE HELP TO GET GOING</span>
         <div class="controls-row"><span class="key-group"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span><span>Move</span><i></i><span class="mouse-icon" aria-hidden="true"></span><span>Look around</span></div>
-        <div class="controls-row controls-row-secondary"><span><kbd>SHIFT</kbd> Run</span><span><kbd>E</kbd> Interact</span><span><kbd>ESC</kbd> Close</span></div>
+        <div class="controls-row controls-row-secondary"><span><kbd>SHIFT</kbd> Run</span><span><kbd>SPACE</kbd> Jump</span><span><kbd>F</kbd> Sling</span><span><kbd>C</kbd> Roll</span><span><kbd>E</kbd> Use</span></div>
       </div>
 
       <div class="bottom-center">
@@ -117,11 +120,26 @@
         <button id="mini-season" type="button" aria-label="Change season" title="Change season"><span class="season-swatch" id="mini-season-swatch"></span></button>
       </div>
 
+      <div class="vitals" id="vitals" aria-label="Health and stamina">
+        <div class="hearts" id="hearts" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+        <div class="stamina-track"><span id="stamina-fill"></span></div>
+      </div>
+
+      <div class="mission-timer" id="mission-timer" hidden>
+        <div class="mission-top"><small id="mission-title">THE MINE IS FLOODING</small><strong id="mission-time">60</strong></div>
+        <div class="mission-caption" id="mission-label">GET OUT</div>
+        <div class="mission-track"><span id="mission-fill"></span></div>
+      </div>
+
       <div class="touch-layer" id="touch-layer" aria-hidden="true">
         <div class="stick-rest" id="stick-rest"><span class="stick-rest-dot"></span></div>
         <div class="stick-base" id="stick-base" hidden><span class="stick-knob" id="stick-knob"></span></div>
       </div>
-      <button id="mobile-interact" class="mobile-interact" type="button" aria-label="Interact" hidden><svg><use href="#i-spark"/></svg><span>USE</span></button>
+      <div class="action-cluster">
+        <button id="act-jump" class="act-sub" type="button" aria-label="Jump"><svg><use href="#i-jump"/></svg><span>JUMP</span></button>
+        <button id="act-dodge" class="act-sub" type="button" aria-label="Dodge roll"><svg><use href="#i-dash"/></svg><span>DODGE</span></button>
+        <button id="mobile-interact" class="mobile-interact" type="button" aria-label="Action"><svg><use href="#i-spark"/></svg><span id="action-label">FIRE</span></button>
+      </div>
       <div class="touch-hint" id="touch-hint" hidden>
         <div><span class="th-icon th-look"><svg><use href="#i-compass"/></svg></span><span>Drag anywhere to look around</span></div>
         <div><span class="th-icon th-walk"><svg><use href="#i-arrow"/></svg></span><span>Push the stick to walk, further to run</span></div>
@@ -129,7 +147,20 @@
 
       <div id="discovery-toast" class="discovery-toast" aria-live="polite"><span class="discovery-icon"><svg><use href="#i-compass"/></svg></span><span><small>NEW PLACE DISCOVERED</small><strong id="discovery-name">Pine Camp</strong></span><span class="toast-flourish">✧</span></div>
       <div id="small-toast" class="small-toast" aria-live="polite"></div>
-      <div id="world-tag" class="world-tag"><span class="tag-dot"></span><span id="world-tag-text">WAYFINDER CHARM</span></div>
+      <div id="world-tag" class="world-tag"><span class="tag-dot"></span><span id="world-tag-text">MAP SHARD</span></div>
+      <div id="damage-flash" class="damage-flash" aria-hidden="true"></div>
+      <div id="dark-veil" class="dark-veil" aria-hidden="true"></div>
+      <div id="death-overlay" class="death-overlay" hidden>
+        <div class="death-inner"><span class="death-mark">✦</span><h2>You went down.</h2><p>Mira is on her way. Shards you found are safe.</p></div>
+      </div>
+      <div id="victory-overlay" class="victory-overlay" hidden>
+        <div class="victory-inner">
+          <span class="victory-kicker">THE EXPEDITION IS FOUND</span>
+          <h2>The Relic<br><em>of the Vale.</em></h2>
+          <p>Three shards, one flooded mine, and a ruin that almost kept you. Fernwood remembers the ones who came back.</p>
+          <button id="victory-close" type="button">KEEP WANDERING</button>
+        </div>
+      </div>
       <div id="photo-hint" class="photo-hint" role="button" tabindex="0">PHOTO MODE <span>·</span> <span class="hint-keys">PRESS <kbd>P</kbd> TO RETURN</span><span class="hint-tap">TAP TO RETURN</span></div>
     </div>
 
