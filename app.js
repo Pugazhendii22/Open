@@ -606,7 +606,7 @@ function isWalkable(x,z,feetY){
   }
   if(Math.hypot(x,z)>66)return false;
   // the pier deck, plus the planked walkway that now joins it to the beach
-  const onDock=(x>-4.4&&x<1.7&&z>-13.2&&z<-10.3)||(x>-.5&&x<1.7&&z>-10.3&&z<-8.3);
+  const onDock=(x>-4.4&&x<1.7&&z>-13.2&&z<-10.3)||(x>-.6&&x<1.95&&z>-10.3&&z<-7.4);
   const onIslet=isletDistTo(x,z)<ISLET.walk;
   if(lakeRadius(x,z)<1.05&&!onDock&&!onIslet)return false;
   if(hitsWall(x,z,.42))return false;
