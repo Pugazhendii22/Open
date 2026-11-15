@@ -1543,8 +1543,11 @@ function moveBlock(b,dx,dz){
 }
 function checkPlate(){
   const b=pushables[0];if(!b)return;
-  const on=Math.hypot(b.x-PLATE.x,b.z-PLATE.z)<1.05;
+  // a thumbstick can't nudge a heavy stone to the exact millimetre: if it is
+  // close enough, settle it into the socket and let the gate open
+  const on=Math.hypot(b.x-PLATE.x,b.z-PLATE.z)<1.55;
   if(on===b.plate)return;
+  if(on){b.x=PLATE.x;b.z=PLATE.z;b.mesh.position.set(b.x,heightAt(b.x,b.z)+.75,b.z)}
   b.plate=on;
   for(const g of gates){
     g.open=on;
