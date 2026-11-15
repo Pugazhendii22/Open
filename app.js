@@ -413,6 +413,7 @@ function addWorldModels(){
   place('trailSign',23,-21,.92,.4);
   place('dock',-1,-11.7,1.25,Math.PI/2,.15);
   place('dock',-3.6,-11.7,1.25,Math.PI/2,.15);
+  place('dock',0.7,-10.5,1.2,0,.15);place('dock',0.75,-8.7,1.2,0,.2);
   place('canoe',-5.5,-9,1.05,Math.PI*.43,.58);
   place('pebbles',1.7,-6.6,1.15);place('pebbles',-2.2,-4.1,.9);
   for(const [x,z,s] of [[-9,-9,1],[-18,-18,.83],[-21,-7,1.1]]){
@@ -604,7 +605,8 @@ function isWalkable(x,z,feetY){
     return lakeRadius(x,z)<1.0;
   }
   if(Math.hypot(x,z)>66)return false;
-  const onDock=x>-4.4&&x<.8&&z>-13.2&&z<-10.0;
+  // the pier deck, plus the planked walkway that now joins it to the beach
+  const onDock=(x>-4.4&&x<1.7&&z>-13.2&&z<-10.3)||(x>-.5&&x<1.7&&z>-10.3&&z<-8.3);
   const onIslet=isletDistTo(x,z)<ISLET.walk;
   if(lakeRadius(x,z)<1.05&&!onDock&&!onIslet)return false;
   if(hitsWall(x,z,.42))return false;
@@ -1075,7 +1077,7 @@ function addEvents(){
 function init(){
   try{
     setupScene();makeGround();makeLake();makePaths();makeDetails();makeSky();setupAdventure();makeCharms();updateVitals();syncActionButton();
-    if(location.search.includes('debug'))window.__ferndebug={renderer,scene,state,worldModels,camera,adv:{pushables,gates,platforms,hounds,shots,pickups,startFlood,startCollapse,checkPlate,fireSlingshot,jump,dodge,interact}};
+    if(location.search.includes('debug'))window.__ferndebug={renderer,scene,state,worldModels,camera,isWalkable,heightAt,lakeRadius,adv:{pushables,gates,platforms,hounds,shots,pickups,startFlood,startCollapse,checkPlate,fireSlingshot,jump,dodge,interact}};
     applySeason(false);addEvents();refreshProgress();drawMap(dom.minimap,true);
     if(touchUI()){const fold=localStorage.getItem('fernwood-quest-fold');setQuestCollapsed(fold===null?true:fold==='1',false)}
     requestAnimationFrame(animate);loadModels();
