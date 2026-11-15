@@ -1,19 +1,7 @@
-# editor / OS noise
-.DS_Store
-Thumbs.db
-*.swp
-.idea/
-.vscode/
-
-# dependencies & caches
-node_modules/
+.local/
 .cache/
-.venv/
 __pycache__/
-
-# local test artefacts
-tests/*.png
-tmp_previews/
-
-# local tooling
-.sudo_as_admin_successful
+node_modules/
+venv/
+.venv/
+*.pyc
