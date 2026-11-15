@@ -98,7 +98,7 @@ kbd{font-family:inherit}
 .location-copy small{font-size:8px;letter-spacing:1.1px;font-weight:850;color:#89a08c}
 .location-copy strong{font-family:"Fraunces",Georgia,serif;font-size:15px;font-weight:690;white-space:nowrap}
 .location-compass{border-left:1px solid var(--line);padding-left:12px;font-size:10px;font-weight:850;color:#78907b;align-self:stretch;display:flex;align-items:center}
-.interact-prompt{background:#244c3b;color:#fffaf0;border:1px solid rgba(255,255,255,.23);border-radius:11px;height:44px;padding:0 12px 0 8px;display:flex;align-items:center;gap:11px;box-shadow:0 11px 29px rgba(21,46,32,.24);font-size:12px;font-weight:750;white-space:nowrap;animation:prompt-pop .22s ease}
+.interact-prompt{cursor:pointer;touch-action:none;-webkit-tap-highlight-color:transparent;background:#244c3b;color:#fffaf0;border:1px solid rgba(255,255,255,.23);border-radius:11px;height:44px;padding:0 12px 0 8px;display:flex;align-items:center;gap:11px;box-shadow:0 11px 29px rgba(21,46,32,.24);font-size:12px;font-weight:750;white-space:nowrap;animation:prompt-pop .22s ease}
 .interact-prompt kbd{background:#f2efde;color:#315443;border-color:#f2efde;min-width:28px;height:28px;font-size:12px}
 .interact-prompt svg{height:15px;width:15px;margin-left:8px;color:#bbd6b7}
 @keyframes prompt-pop{from{transform:translateY(8px);opacity:0}to{transform:translateY(0);opacity:1}}

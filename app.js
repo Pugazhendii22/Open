@@ -661,7 +661,12 @@ function updateNearby(force){
   if(paddle&&!paddle.taken)actions.push({x:paddle.x,z:paddle.z,r:2.4,label:'Pick up the paddle',kind:'paddle'});
   if(lanternPick&&!lanternPick.taken)actions.push({x:lanternPick.x,z:lanternPick.z,r:2.4,label:'Take the lantern',kind:'lantern'});
   if(state.mode==='walk'&&state.paddle&&!state.relic){
-    actions.push({x:CANOE_POS.x,z:CANOE_POS.z,r:3.0,label:'Climb into the canoe',kind:'canoe'});
+    actions.push({x:CANOE_POS.x,z:CANOE_POS.z,r:3.4,label:'Climb into the canoe',kind:'canoe'});
+  }
+  // standing at the canoe empty-handed used to show nothing at all, which read
+  // as "there is no way onto the water"
+  if(state.mode==='walk'&&!state.paddle&&!state.relic){
+    actions.push({x:CANOE_POS.x,z:CANOE_POS.z,r:3.4,label:'The canoe needs a paddle',kind:'canoe-nopaddle'});
   }
   if(state.mode==='canoe'&&lakeRadius(state.x,state.z)>.6){
     actions.push({x:state.x,z:state.z,r:6,label:'Step ashore',kind:'ashore'});
@@ -688,6 +693,7 @@ function interact(){
     updateNearby(true);return;
   }
   if(near.kind==='canoe'){boardCanoe();return}
+  if(near.kind==='canoe-nopaddle'){showSmallToast('The paddle is lying on the dock boards, a few steps back.');return}
   if(near.kind==='ashore'){disembark();return}
   if(near.kind==='altar'){
     if(state.found.size<3){showSmallToast(`The altar wants all three shards · ${state.found.size} / 3`);return}
@@ -967,6 +973,8 @@ function addEvents(){
   dom.guideTabs.forEach(btn=>btn.addEventListener('click',()=>renderTab(btn.dataset.tab)));
   dom.dialogueClose.addEventListener('click',closeDialogue);
   tapToAct(dom.mobileInteract,primaryAction);
+  // the prompt itself is the most obvious thing to tap on a phone
+  tapToAct(dom.interactPrompt,()=>{if(state.near)interact()});
   tapToAct(dom.actJump,jump);
   tapToAct(dom.actDodge,dodge);
   dom.victoryClose.addEventListener('click',()=>{dom.victoryOverlay.hidden=true});
@@ -1032,9 +1040,25 @@ function addEvents(){
   dom.scene.addEventListener('pointerdown',e=>{
     if(state.paused||state.dialogueOpen)return;
     pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
-    // second finger on the world = pinch to change camera distance
+    // A thumb is already walking and a second finger lands: that finger turns
+    // the camera. Two free fingers still pinch, but a finger beside a held
+    // stick must never be read as a pinch — that is why you could not turn
+    // while walking.
+    if(stickPointer!==null&&pointers.size===2&&e.pointerId!==stickPointer){
+      lookPointer=e.pointerId;state.dragging=true;state.dragX=e.clientX;state.dragY=e.clientY;pinchStart=0;
+      dom.scene.setPointerCapture?.(e.pointerId);return;
+    }
+    // ...and a look-drag that grows a left thumb should start walking
+    if(lookPointer!==null&&stickPointer===null&&isStickZone(e.clientX,e.clientY)){
+      stickPointer=e.pointerId;showStick(e.clientX,e.clientY);moveStick(e.clientX,e.clientY);
+      dom.scene.setPointerCapture?.(e.pointerId);return;
+    }
+    // two fingers on free world = pinch to change camera distance
     if(pointers.size===2){
-      const [a,b]=[...pointers.values()];pinchStart=Math.hypot(a.x-b.x,a.y-b.y)||1;pinchDistance=state.distance;return;
+      if(e.pointerId===stickPointer||e.pointerId===lookPointer)return; // not a new finger
+      const [a,b]=[...pointers.values()];pinchStart=Math.hypot(a.x-b.x,a.y-b.y)||1;pinchDistance=state.distance;
+      lookPointer=null;state.dragging=false;   // two free fingers zoom, one finger turns
+      return;
     }
     if(pointers.size>2)return;
     if(isStickZone(e.clientX,e.clientY)){
@@ -1049,7 +1073,7 @@ function addEvents(){
   });
   dom.scene.addEventListener('pointermove',e=>{
     if(pointers.has(e.pointerId))pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
-    if(pointers.size===2&&pinchStart){
+    if(pointers.size===2&&pinchStart&&lookPointer===null){
       const [a,b]=[...pointers.values()];
       const d=Math.hypot(a.x-b.x,a.y-b.y);
       state.distance=clamp(pinchDistance*(pinchStart/d),9.5,30);return;
