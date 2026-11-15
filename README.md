@@ -6,7 +6,11 @@ Built with [Three.js](https://threejs.org) and real [Polyfork](https://polyfork.
 
 **Desktop:** keyboard + mouse. **Phone:** thumbstick, big action button, jump and dodge buttons, tap-to-look, pinch-to-zoom.
 
-![Fernwood on a phone](screenshots/mobile-portrait.png)
+![Pine Camp, built entirely from the campground kit](screenshots/desktop.png)
+
+![The mine floods the moment you take the third shard](screenshots/mine.png)
+
+![On a phone](screenshots/mobile-portrait.png)
 
 ## The expedition
 
@@ -26,6 +30,7 @@ Five hearts, a stamina bar, and a slingshot. Hounds patrol the islet, the quarry
 
 ## What's in the world
 
+- All 62 models from the Polyfork *Campground & Lake* kit are in the world — every canoe, cooler, camp stove, trailer, boardwalk and trail marker has a home
 - Nine discoverable places, three of them gated: the fog lake, the quarry climb, the flooded mine
 - A weight-plate puzzle in the mine (shove the stone, the gate opens)
 - Two timed sequences: the mine flood and the ruin collapse
@@ -78,7 +83,7 @@ The repo is static. On Vercel: **Add New → Project → import this repo → fr
 index.html          markup, HUD, SVG icons
 styles.css          all styling, including the mobile HUD
 app.js              the whole game: world build, movement, camera, adventure layer
-assets/models/      26 GLB props from Polyfork
+assets/models/      62 GLB props from Polyfork
 assets/fonts/       display + interface fonts
 vendor/             three.module.js and GLTFLoader
 tests/              Playwright scripts and screenshots used to verify the build

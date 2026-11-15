@@ -29,7 +29,43 @@ const MODEL_DEFS = {
   lookout: ['splay-leg-lookout-tower-6fae7e', 'Splay-Leg Lookout Tower'],
   pebbles: ['lake-pebbles-6c0359', 'Lake Pebbles'],
   hammock: ['hammock-on-posts-7d5c47', 'Hammock on Posts'],
-  domeTent: ['dome-tent-9ee59d', 'Dome Tent']
+  domeTent: ['dome-tent-9ee59d', 'Dome Tent'],
+  amphitheatre: ['amphitheatre-bench-row-d72422', 'Amphitheatre Bench Row'],
+  foodLocker: ['bear-proof-food-locker-9144bb', 'Bear-Proof Food Locker'],
+  boatRamp: ['boat-launch-ramp-dbde11', 'Boat Launch Ramp'],
+  cooler: ['camp-cooler-8ba941', 'Camp Cooler'],
+  dutchOven: ['camp-dutch-oven-843dda', 'Camp Dutch Oven'],
+  kitchenTable: ['camp-kitchen-table-dfa2ab', 'Camp Kitchen Table'],
+  waterJug: ['camp-water-jug-1aba54', 'Camp Water Jug'],
+  cookingGrate: ['campfire-cooking-grate-884d56', 'Campfire Cooking Grate'],
+  campfireParent: ['campfire-parent-b1c0d5', 'Campfire Parent'],
+  kitTerrain: ['campground-lake-terrain-b5f899', 'Campground & Lake Terrain'],
+  canoeRack: ['canoe-rack-c8126e', 'Canoe Rack'],
+  wallTent: ['canvas-wall-tent-de8a04', 'Canvas Wall Tent'],
+  cordwood: ['cordwood-pile-b5229b', 'Cordwood Pile'],
+  footbridge: ['creek-footbridge-d35cf7', 'Creek Footbridge'],
+  roots: ['exposed-tree-roots-e1409c', 'Exposed Tree Roots'],
+  chair: ['folding-camp-chair-2fc7d1', 'Folding Camp Chair'],
+  kayak: ['lake-kayak-930d0b', 'Lake Kayak'],
+  skiff: ['lake-rowing-skiff-4916e7', 'Lake Rowing Skiff'],
+  lifeJacket: ['life-jacket-post-15c73a', 'Life Jacket Post'],
+  marshmallow: ['marshmallow-stick-e955c7', 'Marshmallow Stick'],
+  pitchPost: ['pitch-marker-post-a87f8f', 'Pitch Marker Post'],
+  fishingRod: ['propped-fishing-rod-072978', 'Propped Fishing Rod'],
+  ropeSwing: ['rope-swing-on-a-ada4bb', 'Rope Swing on a Branch'],
+  rv: ['rv-travel-trailer-bd53d7', 'RV Travel Trailer'],
+  registration: ['self-registration-post-e4636f', 'Self-Registration Post'],
+  sleepingBag: ['sleeping-bag-730d7d', 'Sleeping Bag'],
+  splittingAxe: ['splitting-axe-in-a-afd1d5', 'Splitting Axe in a Stump'],
+  paddleboard: ['stand-up-paddleboard-92874f', 'Stand-Up Paddleboard'],
+  stringLights: ['string-light-run-01ba14', 'String Light Run'],
+  raft: ['swim-raft-6aefb5', 'Swim Raft'],
+  tackleBox: ['tackle-box-efd0ee', 'Tackle Box'],
+  teardrop: ['teardrop-trailer-580e25', 'Teardrop Trailer'],
+  washHouse: ['timber-wash-house-c7e7d5', 'Timber Wash House'],
+  trailBike: ['trail-bike-on-a-652470', 'Trail Bike on a Rack'],
+  campStove: ['two-burner-camp-stove-3e83f5', 'Two-Burner Camp Stove'],
+  boardwalk: ['wetland-boardwalk-run-6aa967', 'Wetland Boardwalk Run']
 };
 
 const PLACES = [
@@ -351,6 +387,11 @@ function addWorldModels(){
     // A skinned character must keep the original scene so its bones remain bound.
     const clone=key==='backpacker'?gltf.scene:gltf.scene.clone(true);clone.position.set(x,heightAt(x,z)+offset,z);clone.scale.setScalar(scale);clone.rotation.y=rotation;
     clone.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true}});scene.add(clone);
+    if(location.search.includes('debug')){const b=new THREE.Box3().setFromObject(clone);(window.__placed=window.__placed||[]).push({key,x,z,scale,rot:rotation,offset,ground:+heightAt(x,z).toFixed(2),minY:+b.min.y.toFixed(2),maxY:+b.max.y.toFixed(2)})}
+    const clips=modelTemplates[key].animations;
+    if(clips&&clips.length&&key!=='backpacker'&&key!=='campfireParent'){
+      const mx=new THREE.AnimationMixer(clone);mx.clipAction(clips[0]).play();npcMixers.push(mx);
+    }
     if(collision)colliders.push({x,z,r:collision});return clone;
   }
   worldModels.aFrame=place('aFrame',-5,1,.75,-.17,0,2.35);
@@ -378,6 +419,57 @@ function addWorldModels(){
     const pad=place('lily',x,z,s,rand()*6,0);if(pad)pad.position.y=-.116;
   }
   for(const [x,z,s] of [[-2,-3,1],[-29,-9,.75],[-6,-23,.9],[-27,-20,.9]])place('reeds',x,z,s,rand()*6);
+
+  // ---- the rest of the campground kit: all 62 parts live somewhere in Fernwood
+  const floatAt=(x,z,sink=.28)=>-.145-heightAt(x,z)-sink;
+  // camp: cooking, seating, sleeping, storage
+  place('kitchenTable',8.8,6.4,.95,.42);
+  place('campStove',9.9,5.5,.95,1.15);
+  place('cooler',10.4,7.4,1.05,-.35);
+  place('dutchOven',6.3,4.4,1,0);
+  place('waterJug',8.2,7.4,1.05,0);
+  place('marshmallow',4.6,6.1,1.1,.7);
+  place('cookingGrate',5,5,1.06,.25,.34);
+  place('chair',3.6,6.2,1.05,2.3);
+  place('chair',6.6,6.8,.98,-.7);
+  place('amphitheatre',0.6,8.6,1,.5);
+  place('amphitheatre',1.6,10.2,1,.5);
+  place('stringLights',5.6,7.8,1.1,.1);
+  place('registration',2.6,11.4,1.15,.15);
+  place('pitchPost',-2.2,10.6,1.1,.3);
+  place('pitchPost',8.2,12.6,1.1,-.2);
+  place('sleepingBag',-2.8,-2.2,.95,.4);
+  place('foodLocker',13.2,5.0,1,.3);
+  place('trailBike',14.4,9.2,.95,-.7);
+  place('rv',14.6,17.2,1,.12,0,2.2);
+  place('teardrop',19.6,12.4,.95,.35,0,1.7);
+  place('wallTent',-9.4,3.4,.95,.5,0,2.3);
+  place('washHouse',20.6,-4.6,.95,-.3,0,2.6);
+  // the dock and everything that floats
+  place('fishingRod',-2.3,-11.2,1.05,-.06,.3);
+  place('tackleBox',-0.7,-11.6,1.05,.3,.33);
+  place('lifeJacket',1.5,-13.6,1,-.4);
+  place('boatRamp',-2.6,-17.2,.95,0,.16);
+  place('canoeRack',6.6,-9.6,1,-.3,0,1.5);
+  place('kayak',-11.5,-14.6,1,1.1,floatAt(-11.5,-14.6,.08));
+  place('skiff',-9.6,-6.2,1,2.4,floatAt(-9.6,-6.2,.1));
+  place('paddleboard',-6.2,-16.4,1,.4,floatAt(-6.2,-16.4,.06));
+  place('raft',-20.5,-3.4,1,.6,floatAt(-20.5,-3.4,.14));
+  place('boardwalk',-4.6,-20.6,1,.45);
+  place('ropeSwing',-1.2,-17.6,1,.9);
+  // the kit's own terrain patch, set far out past the treeline as the far shore
+  if(modelTemplates.kitTerrain){
+    const t=modelTemplates.kitTerrain.scene.clone(true);
+    t.position.set(0,-7,-132);t.scale.setScalar(1.6);t.rotation.y=.8;
+    t.traverse(o=>{if(o.isMesh){o.castShadow=false;o.receiveShadow=false}});
+    scene.add(t);worldModels.farTerrain=t;
+  }
+  // the old cabin, the mine head, the west woods
+  place('cordwood',26.4,17.0,.95,.2);
+  place('splittingAxe',27.6,16.0,1,.6);
+  place('footbridge',-32.0,-19.4,1.05,.35);
+  place('roots',-27.6,3.6,1,1.2);
+  place('pitchPost',33.6,-21.8,1,.9);
   worldModels.swing=place('swingTree',-30,0,1.04,.35,0,1.05);
   place('pebbles',-29,-7,.8);
   // Character GLBs come with Idle, Walk and Run animation clips.
@@ -386,6 +478,7 @@ function addWorldModels(){
   addNPC('ranger',8.4,9.2,Math.PI+.35,'Mira');
   addNPC('kid',0,-.8,Math.PI*.6,'Pip');
   addNPC('angler',.1,-7.6,-Math.PI*.45,'Sol');
+  addNPC('campfireParent',6.6,3.6,Math.PI*.85,'Wren');
   if(worldModels.fire&&modelTemplates.campfire?.animations?.length){campfireMixer=new THREE.AnimationMixer(worldModels.fire);campfireMixer.clipAction(modelTemplates.campfire.animations[0]).play()}
   // Hand-placed pines frame the campground and give distant locations a silhouette.
   const fixed=[[-12,16,.94],[-16,6,.83],[-8,-8,1.05],[1,-12,.84],[20,-5,.9],[24,4,.97],[25,12,.86],[-18,17,1.11],[-35,8,.95],[-34,-10,1.07],[-25,-26,1.1],[22,-34,.82],[35,-17,.9],[36,15,.88],[14,-32,.96],[3,-29,1.05]];
@@ -552,6 +645,7 @@ function updateNearby(force){
   }
   const actions=[
     {x:8.4,z:9.2,r:3.1,label:'Talk to Mira',kind:'mira'},
+    {x:6.6,z:3.6,r:2.7,label:'Talk to Wren',kind:'wren'},
     {x:5,z:12,r:2.65,label:'Read the trailhead sign',kind:'sign'},
     {x:0,z:-.8,r:2.6,label:'Talk to Pip',kind:'pip'},
     {x:.1,z:-7.6,r:2.7,label:'Talk to Sol',kind:'sol'},
@@ -611,6 +705,7 @@ function interact(){
     mira:['MIRA · PARK RANGER','You came about the expedition. Three shards of their map are still out there — one across the fog, one up the lookout, one down the old mine. Bring them to the ruin and the Relic of the Vale is yours. Take the slingshot. The brambles bite.'],
     sign:['TRAILHEAD NOTICE','WEST: the dock and a canoe that wants a paddle. EAST: the old cabin, and the sunken ruin behind it. SOUTH-WEST: the mine. It is dark, and it floods.'],
     pip:['PIP · LITTLE EXPLORER','There is an island in the middle of the lake. I saw a light on it! You will need the canoe. And the bramble-hounds do not like stones in the face.'],
+    wren:['WREN · CAMP COOK','Fire is lit, kettle is on. Up the quarry you go if you want the shard on the lookout — the columns take your weight, just keep walking into them and do not stop halfway. And if a hound gets you, you wake up back here. The camp is safe.'],
     sol:['SOL · LAKE ANGLER','Paddle on the dock. Take it, or the canoe is just a decoration. And keep a stone in your sling — the fog islet has teeth.'],
     cabin:['OLD PINE CABIN','The porch boards creak. Someone has scratched a note into the door: “Whatever you take from the ruin, take it running.”'],
     lookout:['THE LOOKOUT','The ladder is long gone. Climb the old quarry ledges instead — jump, and let the stones take your weight.'],
@@ -801,7 +896,7 @@ function renderTab(tab){
     $('#help-map').addEventListener('click',()=>renderTab('map'));
   } else {
     const creditLinks=Object.values(MODEL_DEFS).map(([id,name])=>`<a href="https://polyfork.dev/asset/${id}" target="_blank" rel="noopener noreferrer" title="${name} by Polyfork, CC BY 4.0">${name} ↗</a>`).join('');
-    dom.guideContent.innerHTML=`<div class="guide-section"><div class="section-kicker">THE PEOPLE BEHIND THE POLYGONS</div><h2 class="section-title" id="guide-title">Made with <em>Polyfork.</em></h2><p class="section-subtitle">A playable expedition, made from a collection of wonderfully cohesive low-poly things.</p><div class="credits-intro"><strong>3D model credits.</strong> The 26 bundled mesh models listed below are by <a href="https://polyfork.dev/" target="_blank" rel="noopener noreferrer">Polyfork</a>, created by Lucas Martinic, and are used under <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Each link opens its model page. The GLB models are unmodified; the land, trails, mine, ruin, ledge climb, creatures, lighting, seasons, combat and interface were made for this game.</div><div class="credit-grid">${creditLinks}</div><p class="credit-footer">Three.js is MIT-licensed. Fernwood is an independent little demo and is not endorsed by Polyfork. Individual asset attribution is also available in the included CREDITS.md file.</p></div>`;
+    dom.guideContent.innerHTML=`<div class="guide-section"><div class="section-kicker">THE PEOPLE BEHIND THE POLYGONS</div><h2 class="section-title" id="guide-title">Made with <em>Polyfork.</em></h2><p class="section-subtitle">A playable expedition, made from a collection of wonderfully cohesive low-poly things.</p><div class="credits-intro"><strong>3D model credits.</strong> The 62 bundled mesh models listed below are by <a href="https://polyfork.dev/" target="_blank" rel="noopener noreferrer">Polyfork</a>, created by Lucas Martinic, and are used under <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Each link opens its model page. The GLB models are unmodified; the land, trails, mine, ruin, ledge climb, creatures, lighting, seasons, combat and interface were made for this game.</div><div class="credit-grid">${creditLinks}</div><p class="credit-footer">Three.js is MIT-licensed. Fernwood is an independent little demo and is not endorsed by Polyfork. Individual asset attribution is also available in the included CREDITS.md file.</p></div>`;
   }
   dom.guideContent.scrollTop=0;
 }
@@ -972,7 +1067,7 @@ function addEvents(){
 function init(){
   try{
     setupScene();makeGround();makeLake();makePaths();makeDetails();makeSky();setupAdventure();makeCharms();updateVitals();syncActionButton();
-    if(location.search.includes('debug'))window.__ferndebug={renderer,scene,state,adv:{pushables,gates,platforms,hounds,shots,pickups,startFlood,startCollapse,checkPlate,fireSlingshot,jump,dodge,interact}};
+    if(location.search.includes('debug'))window.__ferndebug={renderer,scene,state,worldModels,camera,adv:{pushables,gates,platforms,hounds,shots,pickups,startFlood,startCollapse,checkPlate,fireSlingshot,jump,dodge,interact}};
     applySeason(false);addEvents();refreshProgress();drawMap(dom.minimap,true);
     if(touchUI()){const fold=localStorage.getItem('fernwood-quest-fold');setQuestCollapsed(fold===null?true:fold==='1',false)}
     requestAnimationFrame(animate);loadModels();
