@@ -106,7 +106,7 @@ async def main():
         ledges = [(32.8, -25.4, 1.3), (34.2, -26.9, 2.6), (33.2, -28.9, 3.9),
                   (31.4, -30.0, 5.2), (29.4, -30.4, 6.5)]
         await pg.keyboard.down("KeyW")
-        for _ in range(90):
+        for i in range(160):
             y = (await state())["y"]
             nxt = next((l for l in ledges if l[2] > y + 0.15), ledges[-1])
             await pg.evaluate(
@@ -115,7 +115,9 @@ async def main():
                    s.yaw=Math.atan2(-ux/L,-uz/L)}""",
                 [nxt[0], nxt[1]],
             )
-            await pg.wait_for_timeout(120)
+            if i % 12 == 6:                        # a hop helps clear a gap
+                await pg.keyboard.press("Space")
+            await pg.wait_for_timeout(110)
             if y > 6.2:
                 break
         await pg.keyboard.up("KeyW")

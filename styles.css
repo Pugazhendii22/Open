@@ -10,6 +10,8 @@ button:focus-visible{outline:3px solid #dca95c;outline-offset:3px}
 .svg-defs{position:absolute;width:0;height:0;overflow:hidden}
 svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round;stroke-width:1.7;flex-shrink:0}
 #scene{position:absolute;inset:0;overflow:hidden;cursor:grab;background:#d3e9e6;touch-action:none}
+/* gameplay buttons must never turn a press into a browser gesture */
+#act-jump,#act-dodge,#mobile-interact,.stick-rest{touch-action:none;-webkit-tap-highlight-color:transparent}
 #scene:active{cursor:grabbing}
 #scene canvas{display:block;width:100%;height:100%;outline:0}
 .scene-wash{position:absolute;inset:0;pointer-events:none;background:linear-gradient(180deg,rgba(241,250,238,.08),transparent 19%,transparent 75%,rgba(31,61,49,.11));z-index:1}

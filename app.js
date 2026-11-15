@@ -933,12 +933,20 @@ function toggleSound(){
 }
 
 function addEvents(){
+  // Touch buttons act on pointerdown: with a thumb already on the stick the
+  // browser can swallow the follow-up click, which made the right-hand pad
+  // dead while walking. Pressing is also just snappier.
+  const tapToAct=(el,fn)=>{
+    let downAt=0;
+    el.addEventListener('pointerdown',e=>{e.preventDefault();downAt=performance.now();fn()},{passive:false});
+    el.addEventListener('click',()=>{if(performance.now()-downAt<600)return;fn()});
+  };
   const cycleTime=()=>{state.timeIndex=(state.timeIndex+1)%TIMES.length;applyTime()};
   const cycleSeason=()=>{state.seasonIndex=(state.seasonIndex+1)%SEASONS.length;applySeason()};
   dom.timeButton.addEventListener('click',cycleTime);
   dom.seasonButton.addEventListener('click',cycleSeason);
-  dom.miniTime.addEventListener('click',cycleTime);
-  dom.miniSeason.addEventListener('click',cycleSeason);
+  tapToAct(dom.miniTime,cycleTime);
+  tapToAct(dom.miniSeason,cycleSeason);
   dom.soundButton.addEventListener('click',toggleSound);
   dom.helpButton.addEventListener('click',()=>openGuide('help'));
   dom.mapButton.addEventListener('click',()=>openGuide('map'));
@@ -951,9 +959,9 @@ function addEvents(){
   dom.overlayClose.addEventListener('click',closeGuide);dom.overlayScrim.addEventListener('click',closeGuide);
   dom.guideTabs.forEach(btn=>btn.addEventListener('click',()=>renderTab(btn.dataset.tab)));
   dom.dialogueClose.addEventListener('click',closeDialogue);
-  dom.mobileInteract.addEventListener('click',primaryAction);
-  dom.actJump.addEventListener('click',jump);
-  dom.actDodge.addEventListener('click',dodge);
+  tapToAct(dom.mobileInteract,primaryAction);
+  tapToAct(dom.actJump,jump);
+  tapToAct(dom.actDodge,dodge);
   dom.victoryClose.addEventListener('click',()=>{dom.victoryOverlay.hidden=true});
   dom.deathOverlay.addEventListener('click',()=>{if(state.dead)respawnPlayer()});
   dom.dialogue.addEventListener('click',closeDialogue);

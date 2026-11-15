@@ -34,7 +34,7 @@ Five hearts, a stamina bar, and a slingshot. Hounds patrol the islet, the quarry
 - Nine discoverable places, three of them gated: the fog lake, the quarry climb, the flooded mine
 - A weight-plate puzzle in the mine (shove the stone, the gate opens)
 - Two timed sequences: the mine flood and the ruin collapse
-- 3 sky settings (morning / golden hour / after dusk) and 3 seasons (summer / autumn / winter) that repaint the ground, grass, snow and leaves
+- 3 sky settings (morning / golden hour / after dusk) and 3 seasons (**summer / autumn / winter — winter snows over the whole valley**) that repaint the ground, grass, snow and leaves. Switch them from the two controls at the top centre on desktop, or the two round buttons under the minimap on a phone
 - A field guide with a live map, journal, how-to-play and full model credits
 - Photo mode, ambient forest audio, and a minimap that tracks where you are
 
@@ -61,6 +61,7 @@ Five hearts, a stamina bar, and a slingshot. Hounds patrol the islet, the quarry
 | Jump / roll | The **JUMP** and **DODGE** buttons, bottom-right |
 | Use / fire | The big button — it reads `USE` when something is close, `FIRE` when nothing is |
 | Look / zoom | Drag the world, pinch with two fingers |
+| Sky / season | The two round buttons under the minimap, right edge |
 
 The stick spawns wherever your thumb lands, so you never have to find a fixed circle.
 
