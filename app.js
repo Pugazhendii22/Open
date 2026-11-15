@@ -699,7 +699,12 @@ function interact(){
     showSmallToast(`◈  ${CHARMS[near.index].name} taken  ·  ${state.found.size} / 3`);
     if(near.index===2&&!state.floodActive&&inMine(state.x,state.z))startFlood();
     updateNearby(true);
-    if(state.found.size===3)setTimeout(()=>openDialogue('THREE SHARDS','The pieces fit. The altar at the sunken ruin, behind the old cabin, is waiting. Go carefully — that place has been sealed a long time.'),900);
+    if(state.found.size===3)setTimeout(()=>{
+      // never freeze the player inside a timed escape just to tell them a story:
+      // if water or stone is already moving, hold the words until it is over
+      if(state.floodActive||state.collapseActive)state.pendingDialogue=['THREE SHARDS','The pieces fit. The altar at the sunken ruin, behind the old cabin, is waiting. Go carefully — that place has been sealed a long time.'];
+      else openDialogue('THREE SHARDS','The pieces fit. The altar at the sunken ruin, behind the old cabin, is waiting. Go carefully — that place has been sealed a long time.');
+    },900);
     if(!dom.overlay.hidden&&state.currentTab==='journal')renderTab('journal');
     return;
   }
@@ -1757,6 +1762,7 @@ function startFlood(){
 }
 function updateFlood(dt){
   if(!state.floodActive)return;
+  if(state.dialogueOpen||state.paused)return;  // the water waits while you read
   state.flood+=dt/EXP.floodTime;
   const floor=heightAt(-38,-30);
   floodMesh.position.y=floor-1.1+state.flood*3.6;
@@ -1777,6 +1783,7 @@ function updateFlood(dt){
 }
 function endFlood(){
   state.floodActive=false;state.flood=0;
+  if(state.pendingDialogue){const [n,t]=state.pendingDialogue;state.pendingDialogue=null;setTimeout(()=>openDialogue(n,t),450)}
   if(floodMesh){floodMesh.visible=false;floodMesh.position.y=-2.2}
   hideMission();
 }
